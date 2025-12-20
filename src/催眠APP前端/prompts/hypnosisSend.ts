@@ -44,4 +44,3 @@ export function buildHypnosisSendMessage({
   lines.push('</催眠发送>');
   return lines.join('\n');
 }
-

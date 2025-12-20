@@ -35,7 +35,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入简单指示...'
+    notePlaceholder: '输入简单指示...',
   },
 
   // VIP 1
@@ -46,7 +46,7 @@ const FEATURES: HypnosisFeature[] = [
     tier: 'VIP1',
     costType: 'ONE_TIME',
     costValue: 0,
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip1_senses',
@@ -57,7 +57,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 4,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '目标味道 -> 替换味道'
+    notePlaceholder: '目标味道 -> 替换味道',
   },
   {
     id: 'vip1_temp_sensitivity',
@@ -68,7 +68,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '部位 + 目标敏感度（例如：乳头 -> 80）'
+    notePlaceholder: '部位 + 目标敏感度（例如：乳头 -> 80）',
   },
   {
     id: 'vip1_truth_serum',
@@ -79,7 +79,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 4,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '想问的问题 / 引导语'
+    notePlaceholder: '想问的问题 / 引导语',
   },
   {
     id: 'vip1_estrus',
@@ -90,7 +90,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 1,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要增加的发情值（数字）'
+    notePlaceholder: '输入要增加的发情值（数字）',
   },
   {
     id: 'vip1_memory_erase',
@@ -101,7 +101,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要清除的记忆时长（分钟，数字）'
+    notePlaceholder: '输入要清除的记忆时长（分钟，数字）',
   },
 
   // VIP 2
@@ -114,7 +114,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip2_pleasure',
@@ -125,7 +125,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '部位 / 强度'
+    notePlaceholder: '部位 / 强度',
   },
   {
     id: 'vip2_ghost_hand',
@@ -135,7 +135,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip2_body_lock',
@@ -145,7 +145,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 12,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip2_pain_to_pleasure',
@@ -155,7 +155,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip2_emperors_new_clothes',
@@ -165,7 +165,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip2_new_emperor',
@@ -175,7 +175,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
 
   // VIP 3
@@ -187,7 +187,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'ONE_TIME',
     costValue: 100,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip3_orgasm_ban',
@@ -197,7 +197,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'ONE_TIME',
     costValue: 200,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip3_visual_filter',
@@ -207,7 +207,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 25,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip3_conditioned_reflex',
@@ -218,7 +218,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 300,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '触发条件 -> 反射行为'
+    notePlaceholder: '触发条件 -> 反射行为',
   },
   {
     id: 'vip3_temp_common_sense',
@@ -229,7 +229,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 10,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要修改的常识...'
+    notePlaceholder: '输入要修改的常识...',
   },
   {
     id: 'vip3_shame_invert',
@@ -239,7 +239,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 10,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip3_temp_false_memory',
@@ -250,7 +250,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 250,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要植入的记忆...'
+    notePlaceholder: '输入要植入的记忆...',
   },
   {
     id: 'vip3_pseudo_time_stop',
@@ -260,7 +260,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 30,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
 
   // VIP 4
@@ -272,7 +272,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 40,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip4_closed_space_common_sense',
@@ -283,7 +283,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 2,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入空间人数（数字）+ 要修改的规则/常识'
+    notePlaceholder: '输入空间人数（数字）+ 要修改的规则/常识',
   },
   {
     id: 'vip4_excretion_control',
@@ -294,7 +294,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 300,
     costCurrency: 'MC_POINTS',
     isEnabled: false,
-    notePlaceholder: '输入排泄条件...'
+    notePlaceholder: '输入排泄条件...',
   },
   {
     id: 'vip4_control_body_keep_conscious',
@@ -304,7 +304,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 50,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip4_control_body_no_conscious',
@@ -314,7 +314,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 50,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip4_cognitive_block',
@@ -324,7 +324,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'PER_MINUTE',
     costValue: 60,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
   {
     id: 'vip4_fetish_implant',
@@ -335,7 +335,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 800,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要植入的性癖...'
+    notePlaceholder: '输入要植入的性癖...',
   },
   {
     id: 'vip4_temp_personality',
@@ -346,7 +346,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 50,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入人格设定...'
+    notePlaceholder: '输入人格设定...',
   },
   {
     id: 'vip4_lactation',
@@ -356,7 +356,7 @@ const FEATURES: HypnosisFeature[] = [
     costType: 'ONE_TIME',
     costValue: 500,
     costCurrency: 'MC_ENERGY',
-    isEnabled: false
+    isEnabled: false,
   },
 
   // VIP 5
@@ -369,7 +369,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 2000,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要修改的常识...'
+    notePlaceholder: '输入要修改的常识...',
   },
   {
     id: 'vip5_permanent_false_memory',
@@ -380,7 +380,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 1500,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要植入的记忆...'
+    notePlaceholder: '输入要植入的记忆...',
   },
   {
     id: 'vip5_permanent_personality',
@@ -391,7 +391,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 3000,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入人格设定...'
+    notePlaceholder: '输入人格设定...',
   },
   {
     id: 'vip5_open_space_common_sense',
@@ -402,7 +402,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 100,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要修改的规则/常识...'
+    notePlaceholder: '输入要修改的规则/常识...',
   },
 ];
 
@@ -468,7 +468,10 @@ const STORE_SCHEMA: z.ZodType<PersistedStore> = z
       })
       .optional(),
     features: z
-      .record(z.string(), z.object({ isEnabled: z.boolean().optional(), userNote: z.string().optional() }).passthrough())
+      .record(
+        z.string(),
+        z.object({ isEnabled: z.boolean().optional(), userNote: z.string().optional() }).passthrough(),
+      )
       .default({}),
     purchases: z.record(z.string(), z.coerce.boolean()).default({}),
     achievements: z.record(z.string(), z.boolean()).default({}),
@@ -641,29 +644,29 @@ const STATIC_ACHIEVEMENTS: Array<Omit<Achievement, 'isClaimed'>> = [
     title: '初次接触',
     description: '累计消耗超过 10 点 MC 能量。',
     rewardMcPoints: 5,
-    checkCondition: (u) => u.totalConsumedMc >= 10
+    checkCondition: u => u.totalConsumedMc >= 10,
   },
   {
     id: 'ach_vip2',
     title: '进阶会员',
     description: '解锁 VIP 2 权限 (累计消耗 100 MC)。',
     rewardMcPoints: 20,
-    checkCondition: (u) => u.totalConsumedMc >= 100
+    checkCondition: u => u.totalConsumedMc >= 100,
   },
   {
     id: 'ach_rich',
     title: '资金充裕',
     description: '持有金钱超过 50,000 円。',
     rewardMcPoints: 10,
-    checkCondition: (u) => u.money >= 50000
+    checkCondition: u => u.money >= 50000,
   },
   {
     id: 'ach_sus',
     title: '隐秘行动',
     description: '将可疑度控制在 5% 以下。',
     rewardMcPoints: 50,
-    checkCondition: (u) => u.suspicion <= 5
-  }
+    checkCondition: u => u.suspicion <= 5,
+  },
 ];
 
 async function buildRoleBasedAchievements(store: PersistedStore): Promise<Array<Omit<Achievement, 'isClaimed'>>> {
@@ -775,29 +778,29 @@ const QUEST_CONFIG: Array<Omit<Quest, 'status'> & { defaultStatus: QuestStatus }
     title: '每日登录',
     description: '启动一次催眠APP并保持连接1分钟。',
     rewardMcPoints: 2,
-    defaultStatus: 'ACTIVE'
+    defaultStatus: 'ACTIVE',
   },
   {
     id: 'quest_002',
     title: '资源管理',
     description: '将能量恢复至上限。',
     rewardMcPoints: 3,
-    defaultStatus: 'AVAILABLE'
+    defaultStatus: 'AVAILABLE',
   },
   {
     id: 'quest_003',
     title: '高强度训练',
     description: '单次催眠消耗超过 50 点能量。',
     rewardMcPoints: 10,
-    defaultStatus: 'AVAILABLE'
+    defaultStatus: 'AVAILABLE',
   },
   {
     id: 'quest_004',
     title: '试用体验',
     description: '使用一次“初级一般催眠”。',
     rewardMcPoints: 1,
-    defaultStatus: 'COMPLETED'
-  }
+    defaultStatus: 'COMPLETED',
+  },
 ];
 
 const PERSISTENT_FEATURE_IDS = new Set<string>([]);
@@ -961,7 +964,9 @@ export const DataService = {
     const prevActive = Boolean(prev) && prev!.endVirtualMinutes > nowVirtualMinutes;
 
     const base =
-      extendFromExistingIfActive && prevActive ? Math.max(nowVirtualMinutes, prev!.endVirtualMinutes) : nowVirtualMinutes;
+      extendFromExistingIfActive && prevActive
+        ? Math.max(nowVirtualMinutes, prev!.endVirtualMinutes)
+        : nowVirtualMinutes;
 
     const nextSub: SubscriptionState = {
       tier,
@@ -983,14 +988,20 @@ export const DataService = {
     return { ok: true, subscription: (next.subscription as SubscriptionState | undefined) ?? null };
   },
 
-  maybeAutoRenewSubscription: async (nowVirtualMinutes: number | null): Promise<{ renewed: boolean; message?: string }> => {
+  maybeAutoRenewSubscription: async (
+    nowVirtualMinutes: number | null,
+  ): Promise<{ renewed: boolean; message?: string }> => {
     if (nowVirtualMinutes === null) return { renewed: false };
     const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
     const sub = store.subscription;
     if (!sub || !sub.autoRenew) return { renewed: false };
     if (sub.endVirtualMinutes > nowVirtualMinutes) return { renewed: false };
 
-    const result = await DataService.subscribeOrRenew({ tier: sub.tier, nowVirtualMinutes, extendFromExistingIfActive: false });
+    const result = await DataService.subscribeOrRenew({
+      tier: sub.tier,
+      nowVirtualMinutes,
+      extendFromExistingIfActive: false,
+    });
     if (!result.ok) return { renewed: false, message: result.message };
     return { renewed: true };
   },
@@ -1099,7 +1110,7 @@ export const DataService = {
     }));
   },
 
-  claimAchievement: async (id: string, currentPoints: number): Promise<{ success: boolean, newPoints: number }> => {
+  claimAchievement: async (id: string, currentPoints: number): Promise<{ success: boolean; newPoints: number }> => {
     const achievements = await DataService.getAchievements();
     const ach = achievements.find(a => a.id === id);
     if (!ach) return { success: false, newPoints: currentPoints };
@@ -1116,7 +1127,7 @@ export const DataService = {
     return { success: true, newPoints };
   },
 
-  acceptQuest: async (id: string): Promise<{ success: boolean, message?: string }> => {
+  acceptQuest: async (id: string): Promise<{ success: boolean; message?: string }> => {
     const quests = await DataService.getQuests();
     const activeCount = quests.filter(q => q.status === 'ACTIVE').length;
     if (activeCount >= 3) {
@@ -1129,7 +1140,7 @@ export const DataService = {
     return { success: true };
   },
 
-  claimQuest: async (id: string, currentPoints: number): Promise<{ success: boolean, newPoints: number }> => {
+  claimQuest: async (id: string, currentPoints: number): Promise<{ success: boolean; newPoints: number }> => {
     const quests = await DataService.getQuests();
     const quest = quests.find(q => q.id === id);
     if (!quest || quest.status !== 'COMPLETED') return { success: false, newPoints: currentPoints };
@@ -1139,12 +1150,12 @@ export const DataService = {
     await updateStoreWith(s => ({ ...s, quests: { ...s.quests, [id]: 'CLAIMED' } }));
     return { success: true, newPoints };
   },
-  
+
   // Debug method to force complete a quest (for testing)
   debugCompleteQuest: async (id: string) => {
     const quests = await DataService.getQuests();
     const quest = quests.find(q => q.id === id);
     if (!quest || quest.status !== 'ACTIVE') return;
     await updateStoreWith(s => ({ ...s, quests: { ...s.quests, [id]: 'COMPLETED' } }));
-  }
+  },
 };
