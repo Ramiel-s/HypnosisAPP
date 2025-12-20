@@ -3,7 +3,8 @@ import { MvuBridge } from './mvuBridge';
 import { z } from 'zod';
 import {
   canSubscribeTier,
-  canUseFeature,
+  canUseFeature as canUseFeatureBySubscription,
+  getBodyStatsUnlocked,
   getSubscriptionUnlockThreshold,
   isSubscriptionActive,
   SUBSCRIPTION_TIERS,
@@ -803,15 +804,22 @@ const PERSISTENT_FEATURE_IDS = new Set<string>([]);
 
 export const DataService = {
   getUnlocks: async (): Promise<{ debugEnabled: boolean; bodyStatsUnlocked: boolean }> => {
-    const { system, store } = normalizeChatVariables(getVariables(CHAT_OPTION));
+    const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
     const debugEnabled = Boolean(store.debugEnabled);
-    const nowVirtualMinutes = getSystemClockFrom(system).virtualMinutes;
-    const subscriptionActive = isSubscriptionActive({
-      debugEnabled,
-      subscription: (store.subscription as SubscriptionState | undefined) ?? null,
-      nowVirtualMinutes,
-    });
-    return { debugEnabled, bodyStatsUnlocked: subscriptionActive };
+    const nowVirtualMinutes = (await DataService.getSystemClock()).virtualMinutes;
+    const subscription = (store.subscription as SubscriptionState | undefined) ?? null;
+    const accessContext: AccessContext = { debugEnabled, subscription, nowVirtualMinutes };
+
+    const subscriptionActive = isSubscriptionActive(accessContext);
+    let vip1StatsUnlocked = Boolean(store.purchases?.vip1_stats);
+
+    // 兼容旧数据：曾经订阅过（能解锁 vip1_stats）但未写入永久解锁标记时，自动补写一次。
+    if (!vip1StatsUnlocked && subscriptionActive) {
+      await updateStoreWith(s => ({ ...s, purchases: { ...s.purchases, vip1_stats: true } }));
+      vip1StatsUnlocked = true;
+    }
+
+    return { debugEnabled, bodyStatsUnlocked: getBodyStatsUnlocked({ debugEnabled, vip1StatsUnlocked }) };
   },
 
   getSubscriptionUnlockThreshold: (tier: SubscriptionTier): number => getSubscriptionUnlockThreshold(tier),
@@ -821,7 +829,14 @@ export const DataService = {
 
   isSubscriptionActive: (ctx: AccessContext): boolean => isSubscriptionActive(ctx),
 
-  canUseFeature: (feature: HypnosisFeature, ctx: AccessContext): boolean => canUseFeature(feature, ctx),
+  canUseFeature: (feature: HypnosisFeature, ctx: AccessContext): boolean => {
+    if (ctx.debugEnabled) return true;
+    if (feature.id === 'vip1_stats') {
+      const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
+      if (store.purchases?.vip1_stats) return true;
+    }
+    return canUseFeatureBySubscription(feature, ctx);
+  },
 
   getSubscriptionTiers: (): readonly SubscriptionTier[] => SUBSCRIPTION_TIERS,
 
@@ -961,6 +976,8 @@ export const DataService = {
     const next = await updateStoreWith(store => ({
       ...store,
       subscription: nextSub,
+      // “角色状态可视化(vip1_stats)”购买/订阅成功一次后永久解锁，用于主屏幕显示“身体检测”APP。
+      purchases: { ...store.purchases, vip1_stats: true },
     }));
 
     return { ok: true, subscription: (next.subscription as SubscriptionState | undefined) ?? null };
