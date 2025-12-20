@@ -17,7 +17,7 @@ import { DataService } from '../services/dataService';
 import { MvuBridge } from '../services/mvuBridge';
 
 // Wrapper for standard pages
-const PageLayout = ({ title, children, onBack, color = "bg-gray-100" }: any) => (
+const PageLayout = ({ title, children, onBack, color = 'bg-gray-100' }: any) => (
   <div className={`h-full flex flex-col ${color} overflow-hidden animate-fade-in`}>
     <div className="px-4 py-4 flex items-center gap-3 bg-white/50 backdrop-blur-md shadow-sm z-10">
       <button onClick={onBack} className="p-1 rounded-full hover:bg-black/5">
@@ -25,15 +25,11 @@ const PageLayout = ({ title, children, onBack, color = "bg-gray-100" }: any) => 
       </button>
       <h1 className="text-lg font-bold text-gray-800">{title}</h1>
     </div>
-    <div className="flex-1 overflow-auto p-4">
-      {children}
-    </div>
+    <div className="flex-1 overflow-auto p-4">{children}</div>
   </div>
 );
 
-export const BodyStatsApp = ({ onBack }: { onBack: () => void }) => (
-  <BodyScanApp onBack={onBack} />
-);
+export const BodyStatsApp = ({ onBack }: { onBack: () => void }) => <BodyScanApp onBack={onBack} />;
 
 type RoleMap = Record<string, any>;
 
@@ -45,7 +41,8 @@ function extractScalar(value: unknown): string {
     const record = value as Record<string, any>;
     const scalarCandidates = [record.value, record.current, record.amount, record.描述, record.description];
     for (const candidate of scalarCandidates) {
-      if (typeof candidate === 'number' || typeof candidate === 'string' || typeof candidate === 'boolean') return String(candidate);
+      if (typeof candidate === 'number' || typeof candidate === 'string' || typeof candidate === 'boolean')
+        return String(candidate);
     }
     try {
       return JSON.stringify(record);
@@ -98,7 +95,13 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const refreshRef = useRef<() => void>(() => {});
   const selectorRef = useRef<HTMLDivElement | null>(null);
 
-  const roleNames = useMemo(() => Object.keys(roles).filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN')), [roles]);
+  const roleNames = useMemo(
+    () =>
+      Object.keys(roles)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'zh-CN')),
+    [roles],
+  );
   const filteredRoleNames = useMemo(() => {
     const q = search.trim();
     if (!q) return roleNames;
@@ -143,10 +146,7 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 
   const otherScalarEntries = useMemo(
-    () =>
-      nonBarEntries.filter(
-        ([k, v]) => isScalarValue(v) && !k.includes('敏感度') && !k.includes('高潮次数'),
-      ),
+    () => nonBarEntries.filter(([k, v]) => isScalarValue(v) && !k.includes('敏感度') && !k.includes('高潮次数')),
     [nonBarEntries],
   );
 
@@ -166,7 +166,9 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       }
 
       setRoles(rolesData);
-      const nextNames = Object.keys(rolesData).filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      const nextNames = Object.keys(rolesData)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'zh-CN'));
       setSelectedRole(prev => {
         if (prev && nextNames.includes(prev)) return prev;
         return nextNames[0] ?? null;
@@ -357,9 +359,7 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             请选择检测目标
           </div>
         ) : !roleData ? (
-          <div className="h-full flex flex-col items-center justify-center text-white/50 text-sm">
-            暂无该角色数据
-          </div>
+          <div className="h-full flex flex-col items-center justify-center text-white/50 text-sm">暂无该角色数据</div>
         ) : !vipUnlocked ? (
           <div className="p-5 rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-black/30">
             <div className="flex items-start gap-3">
@@ -389,17 +389,11 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 ))}
             </div>
 
-            {sensitivityEntries.length > 0 && (
-              <StatGroupCard title="敏感度" entries={sensitivityEntries} />
-            )}
+            {sensitivityEntries.length > 0 && <StatGroupCard title="敏感度" entries={sensitivityEntries} />}
 
-            {orgasmCountEntries.length > 0 && (
-              <StatGroupCard title="高潮次数" entries={orgasmCountEntries} />
-            )}
+            {orgasmCountEntries.length > 0 && <StatGroupCard title="高潮次数" entries={orgasmCountEntries} />}
 
-            {otherScalarEntries.length > 0 && (
-              <StatGroupCard title="其他数值" entries={otherScalarEntries} />
-            )}
+            {otherScalarEntries.length > 0 && <StatGroupCard title="其他数值" entries={otherScalarEntries} />}
 
             {complexEntries.length > 0 && (
               <div className="space-y-2">
@@ -411,7 +405,6 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </>
         )}
       </div>
-
     </div>
   );
 };
@@ -453,7 +446,9 @@ const StatRow: React.FC<{ label: string; value: unknown }> = ({ label, value }) 
     <div className="p-3 rounded-xl border border-white/10 bg-black/20">
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs font-semibold text-white/80">{label}</div>
-        <div className="text-xs font-bold text-white/90 tabular-nums">{Number.isFinite(numeric) ? numeric : extractScalar(value)}</div>
+        <div className="text-xs font-bold text-white/90 tabular-nums">
+          {Number.isFinite(numeric) ? numeric : extractScalar(value)}
+        </div>
       </div>
       <div className="h-2 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full bg-gradient-to-r ${color}`} style={{ width: `${percent}%` }} />
@@ -488,12 +483,16 @@ const KeyValueRow: React.FC<{ k: string; v: unknown }> = ({ k, v }) => {
         <div className="text-[11px] text-white/70 font-semibold">{k}</div>
         <div className="flex items-center gap-2">
           <div className="text-[10px] text-white/40">{preview}</div>
-          {open ? <ChevronUp size={14} className="text-white/30" /> : <ChevronDown size={14} className="text-white/30" />}
+          {open ? (
+            <ChevronUp size={14} className="text-white/30" />
+          ) : (
+            <ChevronDown size={14} className="text-white/30" />
+          )}
         </div>
       </button>
       {open && (
         <pre className="text-[10px] leading-relaxed text-white/80 p-3 border-t border-white/10 bg-black/30 overflow-x-auto">
-{safeJson(v)}
+          {safeJson(v)}
         </pre>
       )}
     </div>
@@ -508,9 +507,7 @@ function safeJson(value: unknown): string {
   }
 }
 
-export const CalendarApp = ({ onBack }: { onBack: () => void }) => (
-  <CalendarDarkApp onBack={onBack} />
-);
+export const CalendarApp = ({ onBack }: { onBack: () => void }) => <CalendarDarkApp onBack={onBack} />;
 
 type CalendarEvent = {
   start: number;
@@ -537,7 +534,21 @@ const MONTH_LENGTHS: Record<number, number> = {
 
 function inferEventKind(title: string): CalendarEvent['kind'] {
   if (title.includes('祝日') || title.includes('振替休日')) return 'holiday';
-  const festivals = ['七夕', '万圣节', '元旦', '圣诞节', '平安夜', '大晦日', '盂兰盆节', '情人节', '白色情人节', '女儿节', '节分', '七五三节', '愚人节'];
+  const festivals = [
+    '七夕',
+    '万圣节',
+    '元旦',
+    '圣诞节',
+    '平安夜',
+    '大晦日',
+    '盂兰盆节',
+    '情人节',
+    '白色情人节',
+    '女儿节',
+    '节分',
+    '七五三节',
+    '愚人节',
+  ];
   if (festivals.some(key => title.includes(key))) return 'festival';
   return 'event';
 }
@@ -580,7 +591,12 @@ const CALENDAR_EVENTS: Record<number, CalendarEvent[]> = {
     ev(23, 23, '秋分之日(祝日)'),
     ev(29, 29, '体育祭(运动会)'),
   ],
-  10: [ev(1, 1, '衣更(换冬装)'), ev(13, 13, '运动之日(10月第2周一/祝日)'), ev(21, 24, '第二学期中考'), ev(31, 31, '万圣节放学后的Cosplay派对')],
+  10: [
+    ev(1, 1, '衣更(换冬装)'),
+    ev(13, 13, '运动之日(10月第2周一/祝日)'),
+    ev(21, 24, '第二学期中考'),
+    ev(31, 31, '万圣节放学后的Cosplay派对'),
+  ],
   11: [
     ev(1, 2, '文化祭(学园祭)'),
     ev(3, 3, '文化之日(祝日/文化祭后夜祭)'),
@@ -589,10 +605,35 @@ const CALENDAR_EVENTS: Record<number, CalendarEvent[]> = {
     ev(24, 24, '振替休日(补假)'),
     ev(25, 28, '修学旅行'),
   ],
-  12: [ev(9, 12, '第二学期末考'), ev(24, 24, '第二学期结业式/平安夜'), ev(25, 25, '圣诞节/寒假开始'), ev(30, 31, '冬Comi(同人展)'), ev(31, 31, '大晦日(除夕)')],
-  1: [ev(1, 1, '元旦(祝日)'), ev(7, 7, '第三学期始业式'), ev(13, 13, '成人之日(1月第2周一/祝日)'), ev(17, 18, '大学入学共通测试(三年级/校内禁声)'), ev(25, 25, '马拉松大会/耐力跑')],
-  2: [ev(3, 3, '节分(撒豆驱鬼)'), ev(11, 11, '建国纪念日(祝日)'), ev(14, 14, '情人节'), ev(23, 23, '天皇诞辰(祝日)'), ev(24, 24, '振替休日(补假)'), ev(25, 27, '学年末考试(一二年级)')],
-  3: [ev(3, 3, '女儿节'), ev(14, 14, '白色情人节'), ev(20, 20, '春分之日(祝日)'), ev(24, 24, '修业式(年度结束)'), ev(25, 25, '春假开始')],
+  12: [
+    ev(9, 12, '第二学期末考'),
+    ev(24, 24, '第二学期结业式/平安夜'),
+    ev(25, 25, '圣诞节/寒假开始'),
+    ev(30, 31, '冬Comi(同人展)'),
+    ev(31, 31, '大晦日(除夕)'),
+  ],
+  1: [
+    ev(1, 1, '元旦(祝日)'),
+    ev(7, 7, '第三学期始业式'),
+    ev(13, 13, '成人之日(1月第2周一/祝日)'),
+    ev(17, 18, '大学入学共通测试(三年级/校内禁声)'),
+    ev(25, 25, '马拉松大会/耐力跑'),
+  ],
+  2: [
+    ev(3, 3, '节分(撒豆驱鬼)'),
+    ev(11, 11, '建国纪念日(祝日)'),
+    ev(14, 14, '情人节'),
+    ev(23, 23, '天皇诞辰(祝日)'),
+    ev(24, 24, '振替休日(补假)'),
+    ev(25, 27, '学年末考试(一二年级)'),
+  ],
+  3: [
+    ev(3, 3, '女儿节'),
+    ev(14, 14, '白色情人节'),
+    ev(20, 20, '春分之日(祝日)'),
+    ev(24, 24, '修业式(年度结束)'),
+    ev(25, 25, '春假开始'),
+  ],
 };
 
 function eventsForDay(month: number, day: number): CalendarEvent[] {
@@ -605,7 +646,9 @@ function formatEventTitleForCell(e: CalendarEvent): string {
   return main.length > 6 ? main.slice(0, 6) + '…' : main;
 }
 
-function parseSystemDate(raw: unknown): { month: number; day: number; weekdayIndex: number | null; weekdayLabel: string | null } | null {
+function parseSystemDate(
+  raw: unknown,
+): { month: number; day: number; weekdayIndex: number | null; weekdayLabel: string | null } | null {
   if (typeof raw !== 'string') return null;
   const monthMatch = /(\d{1,2})\s*月/.exec(raw);
   const dayMatch = /(\d{1,2})\s*日/.exec(raw);
@@ -723,7 +766,11 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const todayDay = currentDate?.day ?? null;
   const todayMonth = currentDate?.month ?? null;
-  const todayWeek = currentDate?.weekdayLabel ?? (currentDate?.weekdayIndex !== null && currentDate?.weekdayIndex !== undefined ? weekdayLabelFromIndex(currentDate.weekdayIndex) : null);
+  const todayWeek =
+    currentDate?.weekdayLabel ??
+    (currentDate?.weekdayIndex !== null && currentDate?.weekdayIndex !== undefined
+      ? weekdayLabelFromIndex(currentDate.weekdayIndex)
+      : null);
   const schedule = typeof system?.当前日程 === 'string' ? system.当前日程 : null;
 
   const selectedEvents = useMemo(() => {
@@ -815,14 +862,20 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 ].join(' ')}
               >
                 <div className="w-full flex items-start justify-between">
-                  <div className={['text-[11px] font-bold tabular-nums', isToday ? 'text-cyan-200' : 'text-white/80'].join(' ')}>
+                  <div
+                    className={['text-[11px] font-bold tabular-nums', isToday ? 'text-cyan-200' : 'text-white/80'].join(
+                      ' ',
+                    )}
+                  >
                     {day}
                   </div>
                   {(hasHoliday || hasFestival) && (
                     <div
                       className={[
                         'text-[9px] px-1.5 py-0.5 rounded-full border',
-                        hasHoliday ? 'bg-red-500/10 border-red-400/30 text-red-200' : 'bg-fuchsia-500/10 border-fuchsia-400/30 text-fuchsia-200',
+                        hasHoliday
+                          ? 'bg-red-500/10 border-red-400/30 text-red-200'
+                          : 'bg-fuchsia-500/10 border-fuchsia-400/30 text-fuchsia-200',
                       ].join(' ')}
                     >
                       {hasHoliday ? '祝' : '节'}
@@ -832,7 +885,12 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 <div className="w-full">
                   {primary && (
-                    <div className={['text-[9px] leading-tight truncate', hasHoliday ? 'text-red-200/90' : hasFestival ? 'text-fuchsia-200/90' : 'text-white/55'].join(' ')}>
+                    <div
+                      className={[
+                        'text-[9px] leading-tight truncate',
+                        hasHoliday ? 'text-red-200/90' : hasFestival ? 'text-fuchsia-200/90' : 'text-white/55',
+                      ].join(' ')}
+                    >
                       {primary}
                       {events.length > 1 ? ` +${events.length - 1}` : ''}
                     </div>
@@ -844,7 +902,11 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                           key={i}
                           className={[
                             'w-1.5 h-1.5 rounded-full',
-                            e.kind === 'holiday' ? 'bg-red-400/80' : e.kind === 'festival' ? 'bg-fuchsia-400/80' : 'bg-white/25',
+                            e.kind === 'holiday'
+                              ? 'bg-red-400/80'
+                              : e.kind === 'festival'
+                                ? 'bg-fuchsia-400/80'
+                                : 'bg-white/25',
                           ].join(' ')}
                         />
                       ))}
@@ -874,7 +936,10 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           ) : (
             <div className="space-y-2">
               {selectedEvents.map((e, i) => (
-                <div key={i} className="p-3 rounded-xl border border-white/10 bg-black/20 flex items-start justify-between gap-3">
+                <div
+                  key={i}
+                  className="p-3 rounded-xl border border-white/10 bg-black/20 flex items-start justify-between gap-3"
+                >
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold text-white/85 truncate">{e.title}</div>
                     {e.start !== e.end && (
@@ -905,9 +970,7 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
-export const HelpApp = ({ onBack }: { onBack: () => void }) => (
-  <HelpAppInner onBack={onBack} />
-);
+export const HelpApp = ({ onBack }: { onBack: () => void }) => <HelpAppInner onBack={onBack} />;
 
 type HelpTopic = {
   id: string;
@@ -944,12 +1007,8 @@ const HelpAppInner: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <HelpSection title="MC 能量">
               使用催眠 APP 会消耗能量，不同功能消耗不同。每天自然恢复至上限的 50%。
             </HelpSection>
-            <HelpSection title="MC 点">
-              用来解锁功能，以及提高 MC 能量上限。
-            </HelpSection>
-            <HelpSection title="金钱">
-              用来购买物品，也可购买 MC 能量与 MC 点。
-            </HelpSection>
+            <HelpSection title="MC 点">用来解锁功能，以及提高 MC 能量上限。</HelpSection>
+            <HelpSection title="金钱">用来购买物品，也可购买 MC 能量与 MC 点。</HelpSection>
             <HelpSection title="警戒度">
               <div className="space-y-2">
                 <div>
@@ -966,11 +1025,10 @@ const HelpAppInner: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <div>每增加 5 点警戒度，会让「主角可疑度」每天自然增加 1 点。</div>
               </div>
             </HelpSection>
-            <HelpSection title="服从度">
-              在非催眠状态下调教会增加，表示角色在意识清醒时对主角的服从程度。
-            </HelpSection>
+            <HelpSection title="服从度">在非催眠状态下调教会增加，表示角色在意识清醒时对主角的服从程度。</HelpSection>
             <HelpSection title="主角可疑度">
-              在社会看来主角有多可疑。肆无忌惮使用催眠 APP 会增加（例如被多人目击，或直接用催眠获取金钱）。每天自然减少 10 点。
+              在社会看来主角有多可疑。肆无忌惮使用催眠 APP 会增加（例如被多人目击，或直接用催眠获取金钱）。每天自然减少
+              10 点。
             </HelpSection>
             <HelpSection title="金钱来源">
               金钱可以来自打工，也可以直接催眠拿钱；更鼓励用更有创意的玩法去利用催眠 APP 的各种功能。
@@ -1027,12 +1085,12 @@ const HelpAppInner: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
-export const WipApp = ({ onBack, name }: { onBack: () => void, name: string }) => (
+export const WipApp = ({ onBack, name }: { onBack: () => void; name: string }) => (
   <PageLayout title={name} onBack={onBack}>
-     <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
-        <Construction size={48} className="mb-4" />
-        <p>正在施工中...</p>
-        <p className="text-xs mt-2">Coming Soon</p>
-     </div>
+    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
+      <Construction size={48} className="mb-4" />
+      <p>正在施工中...</p>
+      <p className="text-xs mt-2">Coming Soon</p>
+    </div>
   </PageLayout>
 );
