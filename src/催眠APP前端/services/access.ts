@@ -26,7 +26,11 @@ export function getSubscriptionUnlockThreshold(tier: SubscriptionTier): number {
   return toFiniteNumber(cfg?.unlockThreshold) ?? 0;
 }
 
-export function canSubscribeTier(ctx: { tier: SubscriptionTier; debugEnabled: boolean; totalConsumedMc: number }): boolean {
+export function canSubscribeTier(ctx: {
+  tier: SubscriptionTier;
+  debugEnabled: boolean;
+  totalConsumedMc: number;
+}): boolean {
   if (ctx.debugEnabled) return true;
   return ctx.totalConsumedMc >= getSubscriptionUnlockThreshold(ctx.tier);
 }
@@ -56,9 +60,6 @@ export function canUseFeature(feature: HypnosisFeature, ctx: AccessContext): boo
   return SUBSCRIPTION_TIERS.indexOf(ctx.subscription.tier) >= SUBSCRIPTION_TIERS.indexOf(required);
 }
 
-export function getBodyStatsUnlocked(opts: {
-  debugEnabled: boolean;
-  vip1StatsUnlocked: boolean;
-}): boolean {
+export function getBodyStatsUnlocked(opts: { debugEnabled: boolean; vip1StatsUnlocked: boolean }): boolean {
   return opts.debugEnabled || opts.vip1StatsUnlocked;
 }

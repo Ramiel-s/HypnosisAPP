@@ -1,4 +1,3 @@
-
 // Enum for application state (which app is open)
 export enum AppMode {
   HOME = 'HOME',
@@ -7,7 +6,7 @@ export enum AppMode {
   CALENDAR = 'CALENDAR',
   HELP = 'HELP',
   ACHIEVEMENTS = 'ACHIEVEMENTS', // Replaces Ghost/WIP
-  WIP = 'WIP'
+  WIP = 'WIP',
 }
 
 // User Resources Data Structure
@@ -46,7 +45,7 @@ export interface Achievement {
   isClaimed: boolean;
   // Function to check if unlocked based on current user stats
   // Returns true if the condition is met
-  checkCondition: (user: UserResources) => boolean; 
+  checkCondition: (user: UserResources) => boolean;
 }
 
 // Quest Data Structure
