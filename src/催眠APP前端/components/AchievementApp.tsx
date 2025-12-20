@@ -1,17 +1,10 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { UserResources, Achievement } from '../types';
 import { DataService } from '../services/dataService';
-import {
-  Trophy,
-  Scroll,
-  ArrowLeft,
-  CheckCircle,
-  Lock,
-  Gift,
-  Hourglass,
-  Star,
-  ChevronRight,
-  AlertCircle,
+import { 
+  Trophy, Scroll, ArrowLeft, CheckCircle, Lock, 
+  Gift, Hourglass, Star, ChevronRight, AlertCircle 
 } from 'lucide-react';
 
 interface AchievementAppProps {
@@ -85,7 +78,7 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
     const result = await DataService.claimAchievement(ach.id, userData.mcPoints);
     if (result.success) {
       onUpdateUser({ ...userData, mcPoints: result.newPoints });
-      setAchievements(prev => prev.map(a => (a.id === ach.id ? { ...a, isClaimed: true } : a)));
+      setAchievements(prev => prev.map(a => a.id === ach.id ? { ...a, isClaimed: true } : a));
     }
   };
 
@@ -93,11 +86,11 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
   const sortedAchievements = [...achievements].sort((a, b) => {
     const aUnlocked = a.checkCondition(userData);
     const bUnlocked = b.checkCondition(userData);
-
+    
     // 1. Unlocked but Unclaimed first
     if (aUnlocked && !a.isClaimed && (!bUnlocked || b.isClaimed)) return -1;
     if (bUnlocked && !b.isClaimed && (!aUnlocked || a.isClaimed)) return 1;
-
+    
     // 2. Locked second
     if (!aUnlocked && !a.isClaimed && b.isClaimed) return -1;
     if (!bUnlocked && !b.isClaimed && a.isClaimed) return 1;
@@ -107,6 +100,7 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
 
   return (
     <div className="h-full flex flex-col bg-slate-900 text-white animate-fade-in relative overflow-hidden">
+      
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-600/10 rounded-full blur-[80px] pointer-events-none"></div>
@@ -127,91 +121,80 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
 
       {/* Tabs */}
       <div className="flex p-4 gap-4 z-10">
-        <button
+        <button 
           onClick={() => setActiveTab('ACHIEVEMENTS')}
           className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2
-            ${
-              activeTab === 'ACHIEVEMENTS'
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
+            ${activeTab === 'ACHIEVEMENTS' 
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg text-white' 
+              : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
         >
           <Trophy size={16} /> 成就列表
         </button>
-        <button
+        <button 
           onClick={() => setActiveTab('QUESTS')}
           className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2
-            ${
-              activeTab === 'QUESTS'
-                ? 'bg-gradient-to-r from-amber-600 to-orange-600 shadow-lg text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
+            ${activeTab === 'QUESTS' 
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 shadow-lg text-white' 
+              : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
         >
-          <Scroll size={16} /> 悬赏任务{' '}
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10">WIP</span>
+          <Scroll size={16} /> 悬赏任务 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10">WIP</span>
         </button>
       </div>
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4 no-scrollbar z-10">
+        
         {loading && <div className="text-center text-gray-500 py-10">Loading data...</div>}
 
         {/* --- ACHIEVEMENTS LIST --- */}
         {!loading && activeTab === 'ACHIEVEMENTS' && (
           <div className="space-y-3">
             {sortedAchievements.map(ach => {
-              const isUnlocked = ach.checkCondition(userData);
-              return (
-                <div
-                  key={ach.id}
-                  className={`
+               const isUnlocked = ach.checkCondition(userData);
+               return (
+                 <div key={ach.id} className={`
                     relative p-4 rounded-2xl border transition-all duration-300
-                    ${
-                      ach.isClaimed
-                        ? 'bg-slate-800/50 border-white/5 opacity-60'
-                        : isUnlocked
-                          ? 'bg-indigo-900/20 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.15)]'
-                          : 'bg-slate-800/30 border-white/5'
-                    }
-                 `}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${isUnlocked ? 'bg-indigo-500/20' : 'bg-gray-700/30'}`}>
-                        {ach.isClaimed ? (
-                          <CheckCircle size={20} className="text-gray-400" />
-                        ) : isUnlocked ? (
-                          <Trophy size={20} className="text-indigo-400" />
-                        ) : (
-                          <Lock size={20} className="text-gray-500" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className={`font-bold text-sm ${isUnlocked ? 'text-white' : 'text-gray-400'}`}>
-                          {ach.title}
-                        </h3>
-                        <p className="text-xs text-gray-400 mt-1 pr-4">{ach.description}</p>
-                      </div>
+                    ${ach.isClaimed 
+                       ? 'bg-slate-800/50 border-white/5 opacity-60' 
+                       : isUnlocked 
+                          ? 'bg-indigo-900/20 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
+                          : 'bg-slate-800/30 border-white/5'}
+                 `}>
+                    <div className="flex justify-between items-start">
+                       <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${isUnlocked ? 'bg-indigo-500/20' : 'bg-gray-700/30'}`}>
+                             {ach.isClaimed 
+                                ? <CheckCircle size={20} className="text-gray-400" />
+                                : isUnlocked 
+                                   ? <Trophy size={20} className="text-indigo-400" />
+                                   : <Lock size={20} className="text-gray-500" />
+                             }
+                          </div>
+                          <div>
+                             <h3 className={`font-bold text-sm ${isUnlocked ? 'text-white' : 'text-gray-400'}`}>{ach.title}</h3>
+                             <p className="text-xs text-gray-400 mt-1 pr-4">{ach.description}</p>
+                          </div>
+                       </div>
+                       
+                       {/* Action Button */}
+                       {ach.isClaimed ? (
+                          <span className="text-xs font-medium text-gray-500 py-1 px-2">已领取</span>
+                       ) : isUnlocked ? (
+                          <button 
+                            onClick={() => handleClaimAchievement(ach)}
+                            className="bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-lg flex items-center gap-1 animate-pulse"
+                          >
+                             <Gift size={12} />
+                             领 {ach.rewardMcPoints} PT
+                          </button>
+                       ) : (
+                          <div className="flex flex-col items-end">
+                             <span className="text-xs font-bold text-indigo-400/50">+{ach.rewardMcPoints} PT</span>
+                          </div>
+                       )}
                     </div>
-
-                    {/* Action Button */}
-                    {ach.isClaimed ? (
-                      <span className="text-xs font-medium text-gray-500 py-1 px-2">已领取</span>
-                    ) : isUnlocked ? (
-                      <button
-                        onClick={() => handleClaimAchievement(ach)}
-                        className="bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-lg flex items-center gap-1 animate-pulse"
-                      >
-                        <Gift size={12} />领 {ach.rewardMcPoints} PT
-                      </button>
-                    ) : (
-                      <div className="flex flex-col items-end">
-                        <span className="text-xs font-bold text-indigo-400/50">+{ach.rewardMcPoints} PT</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
+                 </div>
+               );
             })}
           </div>
         )}

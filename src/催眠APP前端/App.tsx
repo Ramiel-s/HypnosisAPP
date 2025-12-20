@@ -5,7 +5,10 @@ import { AchievementApp } from './components/AchievementApp'; // Import new comp
 import { BodyStatsApp, CalendarApp, HelpApp, WipApp } from './components/CommonApps';
 import { DataService } from './services/dataService';
 import { UserResources, AppMode } from './types';
-import { Zap, Activity, Calendar, HelpCircle, Trophy, Settings, Phone, Globe, Camera } from 'lucide-react';
+import { 
+  Zap, Activity, Calendar, HelpCircle, Trophy, 
+  Settings, Phone, Globe, Camera
+} from 'lucide-react';
 
 const App = () => {
   // Global State
@@ -98,8 +101,7 @@ const App = () => {
 
   // --- Router ---
   const renderCurrentApp = () => {
-    if (!userData)
-      return <div className="h-full bg-black flex items-center justify-center text-white">Loading OS...</div>;
+    if (!userData) return <div className="h-full bg-black flex items-center justify-center text-white">Loading OS...</div>;
 
     switch (currentApp) {
       case AppMode.HYPNOSIS:
@@ -120,9 +122,7 @@ const App = () => {
       case AppMode.HELP:
         return <HelpApp onBack={() => setCurrentApp(AppMode.HOME)} />;
       case AppMode.ACHIEVEMENTS: // New Route
-        return (
-          <AchievementApp userData={userData} onUpdateUser={updateUser} onBack={() => setCurrentApp(AppMode.HOME)} />
-        );
+        return <AchievementApp userData={userData} onUpdateUser={updateUser} onBack={() => setCurrentApp(AppMode.HOME)} />;
       case AppMode.WIP:
         return <WipApp name="Unknown App" onBack={() => setCurrentApp(AppMode.HOME)} />;
       case AppMode.HOME:
@@ -143,6 +143,7 @@ const App = () => {
     <div className="w-full flex items-center justify-center p-2">
       {/* Phone Bezel */}
       <div className="relative w-full max-w-[420px] aspect-[9/19.5] bg-black rounded-[3rem] border-[8px] border-gray-800 overflow-hidden shadow-2xl ring-2 ring-black/20">
+        
         {/* Dynamic Notch/Status Bar Area - Only visible on Home */}
         {currentApp === AppMode.HOME && (
           <div className="absolute top-0 w-full z-50 pointer-events-none">
@@ -151,7 +152,9 @@ const App = () => {
         )}
 
         {/* Screen Content */}
-        <div className="w-full h-full bg-black overflow-hidden relative">{renderCurrentApp()}</div>
+        <div className="w-full h-full bg-black overflow-hidden relative">
+          {renderCurrentApp()}
+        </div>
 
         {/* Home Indicator (iOS style) - Always visible except in immersive hypnosis */}
         {/* You might want to hide this in apps too if full immersion is desired, but standard is usually visible */}
@@ -180,32 +183,11 @@ const HomeScreen = ({
     systemDateText || localNow.toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const apps = [
-    {
-      id: 'hypno',
-      name: '催眠APP',
-      icon: HypnoLogoSVG,
-      color: 'bg-gradient-to-br from-purple-600 to-pink-600',
-      mode: AppMode.HYPNOSIS,
-      disabled: false,
-    },
-    {
-      id: 'calendar',
-      name: '日历',
-      icon: Calendar,
-      color: 'bg-white text-black',
-      mode: AppMode.CALENDAR,
-      disabled: false,
-    },
+    { id: 'hypno', name: '催眠APP', icon: HypnoLogoSVG, color: 'bg-gradient-to-br from-purple-600 to-pink-600', mode: AppMode.HYPNOSIS, disabled: false },
+    { id: 'calendar', name: '日历', icon: Calendar, color: 'bg-white text-black', mode: AppMode.CALENDAR, disabled: false },
     { id: 'help', name: '帮助', icon: HelpCircle, color: 'bg-gray-500', mode: AppMode.HELP, disabled: false },
     // Replaced Ghost with Achievements
-    {
-      id: 'achievements',
-      name: '成就',
-      icon: Trophy,
-      color: 'bg-gradient-to-br from-indigo-500 to-purple-600',
-      mode: AppMode.ACHIEVEMENTS,
-      disabled: false,
-    },
+    { id: 'achievements', name: '成就', icon: Trophy, color: 'bg-gradient-to-br from-indigo-500 to-purple-600', mode: AppMode.ACHIEVEMENTS, disabled: false },
     { id: 'settings', name: '设置', icon: Settings, color: 'bg-gray-800', mode: AppMode.WIP, disabled: true },
     { id: 'browser', name: 'Safari', icon: Globe, color: 'bg-blue-900', mode: AppMode.WIP, disabled: true },
     { id: 'cam', name: '相机', icon: Camera, color: 'bg-gray-800', mode: AppMode.WIP, disabled: true },
@@ -213,14 +195,7 @@ const HomeScreen = ({
   const visibleApps = bodyStatsUnlocked
     ? [
         apps[0],
-        {
-          id: 'stats',
-          name: '身体检测',
-          icon: Activity,
-          color: 'bg-blue-500',
-          mode: AppMode.BODY_STATS,
-          disabled: false,
-        },
+        { id: 'stats', name: '身体检测', icon: Activity, color: 'bg-blue-500', mode: AppMode.BODY_STATS, disabled: false },
         ...apps.slice(1),
       ]
     : apps;
@@ -235,31 +210,29 @@ const HomeScreen = ({
 
       {/* App Grid */}
       <div className="flex-1 px-5 grid grid-cols-4 gap-y-6 gap-x-4 content-start">
-        {visibleApps.map(app => (
-          <div
-            key={app.id}
-            className={`flex flex-col items-center gap-1.5 group ${app.disabled ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer'}`}
+        {visibleApps.map((app) => (
+          <div 
+            key={app.id} 
+            className={`flex flex-col items-center gap-1.5 group ${app.disabled ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer'}`} 
             onClick={() => !app.disabled && onLaunchApp(app.mode)}
           >
-            <div
-              className={`
+            <div className={`
               w-14 h-14 rounded-2xl ${app.color} flex items-center justify-center shadow-lg 
               ${!app.disabled && 'group-active:scale-90 transition-transform duration-200'}
               relative
-            `}
-            >
+            `}>
               <app.icon size={28} className={app.id === 'calendar' ? 'text-black' : 'text-white'} />
               {app.disabled && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
-                  <span className="text-[8px] font-bold text-white bg-red-600 px-1 rounded">WIP</span>
-                </div>
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
+                    <span className="text-[8px] font-bold text-white bg-red-600 px-1 rounded">WIP</span>
+                 </div>
               )}
             </div>
             <span className="text-[10px] text-white font-medium tracking-wide drop-shadow-md">{app.name}</span>
           </div>
         ))}
       </div>
-
+      
       {/* Dock removed per request */}
     </div>
   );
