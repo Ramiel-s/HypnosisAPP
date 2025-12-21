@@ -319,6 +319,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
   // State
   const [features, setFeatures] = useState<HypnosisFeature[]>([]);
   const [isExpanded, setIsExpanded] = useState(false); // Controls the "Command Center" (Stats + Store)
+  const [quickSupplyQtyInput, setQuickSupplyQtyInput] = useState('1');
   const containerRef = useRef<HTMLDivElement>(null);
   const commandCenterBaseRef = useRef<HTMLDivElement>(null);
   const footerControlsRef = useRef<HTMLDivElement>(null);
@@ -750,25 +751,57 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     setGlobalNote('');
   };
 
-  const purchaseEnergy = (amount: number, costMoney: number) => {
-    if (userData.money >= costMoney) {
-      onUpdateUser({
-        ...userData,
-        money: userData.money - costMoney,
-        mcEnergy: Math.min(userData.mcEnergyMax, userData.mcEnergy + amount),
-      });
-    }
+  const quickSupplyQty = useMemo(() => {
+    const parsed = Number.parseInt(quickSupplyQtyInput, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+    return Math.min(999, parsed);
+  }, [quickSupplyQtyInput]);
+
+  const purchaseEnergy = (desiredAmount: number) => {
+    const unitPrice = 100;
+    const amount = Math.floor(desiredAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    const missing = Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy));
+    const actualAmount = Math.min(missing, amount);
+    if (actualAmount <= 0) return;
+
+    const costMoney = unitPrice * actualAmount;
+    if (userData.money < costMoney) return;
+
+    onUpdateUser({
+      ...userData,
+      money: userData.money - costMoney,
+      mcEnergy: Math.min(userData.mcEnergyMax, userData.mcEnergy + actualAmount),
+    });
   };
 
-  const purchaseMaxEnergy = () => {
-    if (userData.mcPoints >= 1) {
-      onUpdateUser({
-        ...userData,
-        mcPoints: userData.mcPoints - 1,
-        mcEnergyMax: userData.mcEnergyMax + 1,
-        totalConsumedMc: userData.totalConsumedMc + 1,
-      });
-    }
+  const purchaseMaxEnergy = (desiredAmount: number) => {
+    const amount = Math.floor(desiredAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (userData.mcPoints < amount) return;
+
+    onUpdateUser({
+      ...userData,
+      mcPoints: userData.mcPoints - amount,
+      mcEnergyMax: userData.mcEnergyMax + amount,
+      totalConsumedMc: userData.totalConsumedMc + amount,
+    });
+  };
+
+  const purchasePoints = (desiredAmount: number) => {
+    const unitPrice = 1000;
+    const amount = Math.floor(desiredAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    const costMoney = unitPrice * amount;
+    if (userData.money < costMoney) return;
+
+    onUpdateUser({
+      ...userData,
+      mcPoints: userData.mcPoints + amount,
+      money: userData.money - costMoney,
+    });
   };
 
   // --- Render Helpers ---
@@ -1053,49 +1086,81 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
             {/* Quick Store Area */}
             <div className="space-y-2">
-              <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <ShoppingCart size={10} /> 快速补给
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                  <ShoppingCart size={10} /> 快速补给
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider">数量</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={quickSupplyQtyInput}
+                    onChange={e => setQuickSupplyQtyInput(e.target.value)}
+                    onBlur={() => setQuickSupplyQtyInput(String(quickSupplyQty))}
+                    aria-label="快速补给数量"
+                    className="w-16 bg-black/30 border border-white/10 rounded-md px-2 py-1 text-[10px] text-gray-200 focus:outline-none focus:border-pink-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 {/* Buy Energy */}
                 <button
-                  onClick={() => purchaseEnergy(1, 100)}
-                  className="flex flex-col items-start bg-blue-900/20 border border-blue-500/20 hover:bg-blue-900/30 p-2 rounded-xl transition-all active:scale-95"
+                  onClick={() => purchaseEnergy(quickSupplyQty)}
+                  disabled={
+                    Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0 ||
+                    userData.money <
+                      Math.min(Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)), quickSupplyQty) * 100
+                  }
+                  className="flex flex-col items-start bg-blue-900/20 border border-blue-500/20 hover:bg-blue-900/30 p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex justify-between w-full mb-1">
                     <Zap size={16} className="text-blue-400" />
-                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 rounded">¥100</span>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 rounded">
+                      {Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0
+                        ? '已满'
+                        : `¥${(
+                            Math.min(Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)), quickSupplyQty) *
+                            100
+                          ).toLocaleString()}`}
+                    </span>
                   </div>
-                  <div className="text-xs font-bold text-gray-200">恢复 1 能量</div>
+                  <div className="text-xs font-bold text-gray-200">
+                    {Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0
+                      ? '能量已满'
+                      : `恢复 ${Math.min(Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)), quickSupplyQty)} 能量`}
+                  </div>
                 </button>
 
                 {/* Buy Max Energy */}
                 <button
-                  onClick={() => purchaseMaxEnergy()}
-                  disabled={userData.mcPoints < 1}
-                  className="flex flex-col items-start bg-purple-900/20 border border-purple-500/20 hover:bg-purple-900/30 p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                  onClick={() => purchaseMaxEnergy(quickSupplyQty)}
+                  disabled={userData.mcPoints < quickSupplyQty}
+                  className="flex flex-col items-start bg-purple-900/20 border border-purple-500/20 hover:bg-purple-900/30 p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex justify-between w-full mb-1">
                     <Battery size={16} className="text-purple-400" />
-                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 rounded">1 PT</span>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 rounded">
+                      {quickSupplyQty} PT
+                    </span>
                   </div>
-                  <div className="text-xs font-bold text-gray-200">上限 +1</div>
+                  <div className="text-xs font-bold text-gray-200">上限 +{quickSupplyQty}</div>
                 </button>
               </div>
 
               {/* Buy Points */}
               <button
-                onClick={() =>
-                  onUpdateUser({ ...userData, mcPoints: userData.mcPoints + 1, money: userData.money - 1000 })
-                }
-                disabled={userData.money < 1000}
+                onClick={() => purchasePoints(quickSupplyQty)}
+                disabled={userData.money < quickSupplyQty * 1000}
                 className="w-full flex justify-between items-center bg-white/5 hover:bg-white/10 p-2 rounded-lg border border-white/5 transition-colors active:scale-[0.98]"
               >
                 <span className="text-xs text-gray-300 flex items-center gap-2">
-                  <RefreshCcw size={12} /> 充值 1 MC点数
+                  <RefreshCcw size={12} /> 充值 {quickSupplyQty} MC点数
                 </span>
-                <span className="text-xs font-bold text-yellow-400">¥1000</span>
+                <span className="text-xs font-bold text-yellow-400">¥{(quickSupplyQty * 1000).toLocaleString()}</span>
               </button>
             </div>
 

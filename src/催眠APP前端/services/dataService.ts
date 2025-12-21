@@ -1,5 +1,6 @@
 import { Achievement, HypnosisFeature, Quest, QuestStatus, UserResources } from '../types';
 import { MvuBridge } from './mvuBridge';
+import { QUEST_DB, type QuestDefinition } from '../data/questDb';
 import { z } from 'zod';
 import {
   canSubscribeTier,
@@ -772,38 +773,46 @@ async function buildRoleBasedAchievements(store: PersistedStore): Promise<Array<
   return achievements;
 }
 
-const QUEST_CONFIG: Array<Omit<Quest, 'status'> & { defaultStatus: QuestStatus }> = [
-  {
-    id: 'quest_001',
-    title: '每日登录',
-    description: '启动一次催眠APP并保持连接1分钟。',
-    rewardMcPoints: 2,
-    defaultStatus: 'ACTIVE',
-  },
-  {
-    id: 'quest_002',
-    title: '资源管理',
-    description: '将能量恢复至上限。',
-    rewardMcPoints: 3,
-    defaultStatus: 'AVAILABLE',
-  },
-  {
-    id: 'quest_003',
-    title: '高强度训练',
-    description: '单次催眠消耗超过 50 点能量。',
-    rewardMcPoints: 10,
-    defaultStatus: 'AVAILABLE',
-  },
-  {
-    id: 'quest_004',
-    title: '试用体验',
-    description: '使用一次“初级一般催眠”。',
-    rewardMcPoints: 1,
-    defaultStatus: 'COMPLETED',
-  },
-];
+function validateQuestDb(db: QuestDefinition[]) {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  for (const q of db) {
+    if (ids.has(q.id)) throw new Error(`[HypnoOS] QUEST_DB 重复 id: ${q.id}`);
+    ids.add(q.id);
+    if (names.has(q.name)) throw new Error(`[HypnoOS] QUEST_DB 重复 name: ${q.name}`);
+    names.add(q.name);
+  }
+  return db;
+}
+
+const QUEST_DATABASE = validateQuestDb(QUEST_DB);
 
 const PERSISTENT_FEATURE_IDS = new Set<string>([]);
+
+const SUBSCRIPTION_TIER_TRIAL_LABEL = '试用期';
+
+function getSubscriptionTierLabel(subscription: SubscriptionState | null, nowVirtualMinutes: number | null): string | null {
+  if (!subscription) return SUBSCRIPTION_TIER_TRIAL_LABEL;
+  if (nowVirtualMinutes === null) return null;
+  return subscription.endVirtualMinutes > nowVirtualMinutes ? subscription.tier : SUBSCRIPTION_TIER_TRIAL_LABEL;
+}
+
+async function syncSubscriptionTierLabel(nowVirtualMinutes: number | null): Promise<void> {
+  const { system, store } = normalizeChatVariables(getVariables(CHAT_OPTION));
+  const subscription = (store.subscription as SubscriptionState | undefined) ?? null;
+  const desired = getSubscriptionTierLabel(subscription, nowVirtualMinutes);
+  if (desired === null) return;
+  if (system._催眠APP订阅等级 === desired) return;
+
+  updateVariablesWith(vars => {
+    const { system: nextSystem } = normalizeChatVariables(vars);
+    nextSystem._催眠APP订阅等级 = desired;
+    vars.系统 = nextSystem;
+    return vars;
+  }, CHAT_OPTION);
+
+  await MvuBridge.syncSubscriptionTier(desired);
+}
 
 export const DataService = {
   getUnlocks: async (): Promise<{ debugEnabled: boolean; bodyStatsUnlocked: boolean }> => {
@@ -879,15 +888,24 @@ export const DataService = {
   },
 
   getSystemClock: async (): Promise<{ dateText?: string; timeText?: string; virtualMinutes: number | null }> => {
+    const maybeSync = async (clock: { virtualMinutes: number | null }) => {
+      try {
+        await syncSubscriptionTierLabel(clock.virtualMinutes);
+      } catch (err) {
+        console.warn('[HypnoOS] 同步订阅等级变量失败', err);
+      }
+      return clock;
+    };
+
     try {
       const mvuSystem = await MvuBridge.getSystem();
-      if (mvuSystem) return getSystemClockFrom(mvuSystem);
+      if (mvuSystem) return await maybeSync(getSystemClockFrom(mvuSystem));
     } catch (err) {
       console.warn('[HypnoOS] 读取 MVU 系统时间失败，回退到聊天变量', err);
     }
 
     const { system } = normalizeChatVariables(getVariables(CHAT_OPTION));
-    return getSystemClockFrom(system);
+    return await maybeSync(getSystemClockFrom(system));
   },
 
   getSessionEnd: async (): Promise<{ endVirtualMinutes: number | null; endAtMs: number | null }> => {
@@ -942,6 +960,14 @@ export const DataService = {
       delete next.subscription;
       return next;
     });
+    updateVariablesWith(vars => {
+      const { system } = normalizeChatVariables(vars);
+      if (system._催眠APP订阅等级 === SUBSCRIPTION_TIER_TRIAL_LABEL) return vars;
+      system._催眠APP订阅等级 = SUBSCRIPTION_TIER_TRIAL_LABEL;
+      vars.系统 = system;
+      return vars;
+    }, CHAT_OPTION);
+    await MvuBridge.syncSubscriptionTier(SUBSCRIPTION_TIER_TRIAL_LABEL);
   },
 
   subscribeOrRenew: async ({
@@ -984,6 +1010,15 @@ export const DataService = {
       // “角色状态可视化(vip1_stats)”购买/订阅成功一次后永久解锁，用于主屏幕显示“身体检测”APP。
       purchases: { ...store.purchases, vip1_stats: true },
     }));
+
+    updateVariablesWith(vars => {
+      const { system } = normalizeChatVariables(vars);
+      if (system._催眠APP订阅等级 === tier) return vars;
+      system._催眠APP订阅等级 = tier;
+      vars.系统 = system;
+      return vars;
+    }, CHAT_OPTION);
+    await MvuBridge.syncSubscriptionTier(tier);
 
     return { ok: true, subscription: (next.subscription as SubscriptionState | undefined) ?? null };
   },
@@ -1101,13 +1136,36 @@ export const DataService = {
 
   getQuests: async (): Promise<Quest[]> => {
     const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
-    return QUEST_CONFIG.map(q => ({
-      id: q.id,
-      title: q.title,
-      description: q.description,
-      rewardMcPoints: q.rewardMcPoints,
-      status: store.quests[q.id] ?? q.defaultStatus,
-    }));
+    const claimed = store.quests ?? {};
+    const tasks = (await MvuBridge.getTasks().catch(() => null)) ?? {};
+
+    const quests = QUEST_DATABASE.map(q => {
+      const locked = claimed[q.id] === 'CLAIMED';
+      if (locked) {
+        return {
+          id: q.id,
+          title: q.name,
+          description: q.condition,
+          rewardMcPoints: q.rewardMcPoints,
+          status: 'CLAIMED' as QuestStatus,
+        };
+      }
+
+      const taskState = (tasks as any)[q.name];
+      const completed = Boolean(taskState && typeof taskState === 'object' && taskState.已完成 === true);
+      const active = Boolean(taskState && typeof taskState === 'object' && typeof taskState.已完成 === 'boolean');
+      return {
+        id: q.id,
+        title: q.name,
+        description: q.condition,
+        rewardMcPoints: q.rewardMcPoints,
+        status: completed ? ('COMPLETED' as QuestStatus) : active ? ('ACTIVE' as QuestStatus) : ('AVAILABLE' as QuestStatus),
+      };
+    });
+
+    const order: Record<QuestStatus, number> = { COMPLETED: 0, ACTIVE: 1, AVAILABLE: 2, CLAIMED: 3 };
+    quests.sort((a, b) => order[a.status] - order[b.status]);
+    return quests;
   },
 
   claimAchievement: async (id: string, currentPoints: number): Promise<{ success: boolean; newPoints: number }> => {
@@ -1128,34 +1186,47 @@ export const DataService = {
   },
 
   acceptQuest: async (id: string): Promise<{ success: boolean; message?: string }> => {
-    const quests = await DataService.getQuests();
-    const activeCount = quests.filter(q => q.status === 'ACTIVE').length;
-    if (activeCount >= 3) {
-      return { success: false, message: '同时最多只能接取3个任务' };
-    }
-    const quest = quests.find(q => q.id === id);
-    if (!quest || quest.status !== 'AVAILABLE') return { success: false, message: '任务状态错误' };
+    const def = QUEST_DATABASE.find(q => q.id === id);
+    if (!def) return { success: false, message: '未知任务' };
+    if (def.name.includes('.')) return { success: false, message: '任务名不能包含“.”' };
 
-    await updateStoreWith(s => ({ ...s, quests: { ...s.quests, [id]: 'ACTIVE' } }));
-    return { success: true };
+    const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
+    if (store.quests?.[def.id] === 'CLAIMED') return { success: false, message: '该任务已完成并锁定' };
+
+    const tasks = await MvuBridge.getTasks();
+    if (!tasks) return { success: false, message: 'MVU 未就绪，无法接取任务' };
+
+    const activeTaskNames = Object.entries(tasks).filter(([, v]) => v && typeof v === 'object' && typeof (v as any).已完成 === 'boolean');
+    if (activeTaskNames.length >= 3) return { success: false, message: '同时最多只能接取3个任务' };
+    if ((tasks as any)[def.name]) return { success: false, message: '该任务已在进行中' };
+
+    try {
+      await MvuBridge.setTask(def.name, { 完成条件: def.condition, 已完成: false });
+      const after = await MvuBridge.getTasks();
+      if (!after || !(def.name in after)) {
+        return { success: false, message: '接取失败：任务未写入 MVU（请确认 MVU schema 已包含“任务”）' };
+      }
+      return { success: true };
+    } catch (err) {
+      console.warn('[HypnoOS] 接取任务写入失败', err);
+      return { success: false, message: '接取失败：写入 MVU 出错' };
+    }
   },
 
   claimQuest: async (id: string, currentPoints: number): Promise<{ success: boolean; newPoints: number }> => {
-    const quests = await DataService.getQuests();
-    const quest = quests.find(q => q.id === id);
-    if (!quest || quest.status !== 'COMPLETED') return { success: false, newPoints: currentPoints };
+    const def = QUEST_DATABASE.find(q => q.id === id);
+    if (!def) return { success: false, newPoints: currentPoints };
+    if (def.name.includes('.')) return { success: false, newPoints: currentPoints };
 
-    const newPoints = currentPoints + quest.rewardMcPoints;
+    const tasks = await MvuBridge.getTasks();
+    if (!tasks) return { success: false, newPoints: currentPoints };
+    const taskState = (tasks as any)[def.name];
+    if (!taskState || typeof taskState !== 'object' || taskState.已完成 !== true) return { success: false, newPoints: currentPoints };
+
+    const newPoints = currentPoints + def.rewardMcPoints;
     await DataService.updateResources({ mcPoints: newPoints });
     await updateStoreWith(s => ({ ...s, quests: { ...s.quests, [id]: 'CLAIMED' } }));
+    await MvuBridge.deleteTask(def.name);
     return { success: true, newPoints };
-  },
-
-  // Debug method to force complete a quest (for testing)
-  debugCompleteQuest: async (id: string) => {
-    const quests = await DataService.getQuests();
-    const quest = quests.find(q => q.id === id);
-    if (!quest || quest.status !== 'ACTIVE') return;
-    await updateStoreWith(s => ({ ...s, quests: { ...s.quests, [id]: 'COMPLETED' } }));
   },
 };

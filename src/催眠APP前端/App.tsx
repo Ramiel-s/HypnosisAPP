@@ -200,7 +200,7 @@ const HomeScreen = ({
     // Replaced Ghost with Achievements
     {
       id: 'achievements',
-      name: '成就',
+      name: '成就和任务',
       icon: Trophy,
       color: 'bg-gradient-to-br from-indigo-500 to-purple-600',
       mode: AppMode.ACHIEVEMENTS,

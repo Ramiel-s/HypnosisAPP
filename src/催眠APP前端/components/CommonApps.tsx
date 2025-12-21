@@ -692,6 +692,7 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [system, setSystem] = useState<Record<string, any> | null>(null);
   const [currentDate, setCurrentDate] = useState<ReturnType<typeof parseSystemDate> | null>(null);
   const [displayedMonth, setDisplayedMonth] = useState<number>(4);
+  const [displayedYearOffset, setDisplayedYearOffset] = useState<number>(0);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const didInitRef = useRef(false);
 
@@ -725,6 +726,7 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!currentDate || didInitRef.current) return;
     didInitRef.current = true;
     setDisplayedMonth(currentDate.month);
+    setDisplayedYearOffset(0);
     setSelectedDay(currentDate.day);
   }, [currentDate]);
 
@@ -735,8 +737,9 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, [currentDate]);
 
   const startWeekday = useMemo(() => {
-    return (april1Weekday + (monthStartOffset(displayedMonth) % 7)) % 7;
-  }, [april1Weekday, displayedMonth]);
+    const yearShift = ((displayedYearOffset % 7) + 7) % 7; // 365 % 7 = 1
+    return (april1Weekday + yearShift + (monthStartOffset(displayedMonth) % 7)) % 7;
+  }, [april1Weekday, displayedMonth, displayedYearOffset]);
 
   const daysInMonth = MONTH_LENGTHS[displayedMonth] ?? 30;
 
@@ -754,10 +757,14 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const goMonth = (delta: -1 | 1) => {
     if (!canSwitch) return;
+    const yearDelta =
+      delta === 1 && monthIdx === SCHOOL_MONTHS.length - 1 ? 1 : delta === -1 && monthIdx === 0 ? -1 : 0;
+    const nextYearOffset = displayedYearOffset + yearDelta;
     const nextIdx = (monthIdx + delta + SCHOOL_MONTHS.length) % SCHOOL_MONTHS.length;
     const nextMonth = SCHOOL_MONTHS[nextIdx];
+    setDisplayedYearOffset(nextYearOffset);
     setDisplayedMonth(nextMonth);
-    if (currentDate && currentDate.month === nextMonth) {
+    if (currentDate && currentDate.month === nextMonth && nextYearOffset === 0) {
       setSelectedDay(currentDate.day);
     } else {
       setSelectedDay(1);
@@ -810,7 +817,7 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <div className="w-9" />
         </div>
 
-        {todayMonth === displayedMonth && todayDay && (todayWeek || schedule) && (
+        {displayedYearOffset === 0 && todayMonth === displayedMonth && todayDay && (todayWeek || schedule) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {todayWeek && (
               <span className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
@@ -843,7 +850,7 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               return <div key={idx} className="aspect-square rounded-xl border border-white/5 bg-white/0" />;
             }
 
-            const isToday = todayMonth === displayedMonth && todayDay === day;
+            const isToday = displayedYearOffset === 0 && todayMonth === displayedMonth && todayDay === day;
             const isSelected = selectedDay === day;
             const events = eventsForDay(displayedMonth, day);
             const hasHoliday = events.some(e => e.kind === 'holiday');
@@ -1039,7 +1046,7 @@ const HelpAppInner: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       {
         id: 'mc-points',
         title: '如何获取 MC 点数？',
-        content: <div className="text-sm text-gray-600">暂无说明，敬请期待。</div>,
+        content: <div className="text-sm text-gray-600">通过完成成就, 任务, 氪金, 或让角色高潮.</div>,
       },
     ],
     [],
