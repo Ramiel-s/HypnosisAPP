@@ -791,7 +791,10 @@ const PERSISTENT_FEATURE_IDS = new Set<string>([]);
 
 const SUBSCRIPTION_TIER_TRIAL_LABEL = '试用期';
 
-function getSubscriptionTierLabel(subscription: SubscriptionState | null, nowVirtualMinutes: number | null): string | null {
+function getSubscriptionTierLabel(
+  subscription: SubscriptionState | null,
+  nowVirtualMinutes: number | null,
+): string | null {
   if (!subscription) return SUBSCRIPTION_TIER_TRIAL_LABEL;
   if (nowVirtualMinutes === null) return null;
   return subscription.endVirtualMinutes > nowVirtualMinutes ? subscription.tier : SUBSCRIPTION_TIER_TRIAL_LABEL;
@@ -1159,7 +1162,11 @@ export const DataService = {
         title: q.name,
         description: q.condition,
         rewardMcPoints: q.rewardMcPoints,
-        status: completed ? ('COMPLETED' as QuestStatus) : active ? ('ACTIVE' as QuestStatus) : ('AVAILABLE' as QuestStatus),
+        status: completed
+          ? ('COMPLETED' as QuestStatus)
+          : active
+            ? ('ACTIVE' as QuestStatus)
+            : ('AVAILABLE' as QuestStatus),
       };
     });
 
@@ -1196,7 +1203,9 @@ export const DataService = {
     const tasks = await MvuBridge.getTasks();
     if (!tasks) return { success: false, message: 'MVU 未就绪，无法接取任务' };
 
-    const activeTaskNames = Object.entries(tasks).filter(([, v]) => v && typeof v === 'object' && typeof (v as any).已完成 === 'boolean');
+    const activeTaskNames = Object.entries(tasks).filter(
+      ([, v]) => v && typeof v === 'object' && typeof (v as any).已完成 === 'boolean',
+    );
     if (activeTaskNames.length >= 3) return { success: false, message: '同时最多只能接取3个任务' };
     if ((tasks as any)[def.name]) return { success: false, message: '该任务已在进行中' };
 
@@ -1221,7 +1230,8 @@ export const DataService = {
     const tasks = await MvuBridge.getTasks();
     if (!tasks) return { success: false, newPoints: currentPoints };
     const taskState = (tasks as any)[def.name];
-    if (!taskState || typeof taskState !== 'object' || taskState.已完成 !== true) return { success: false, newPoints: currentPoints };
+    if (!taskState || typeof taskState !== 'object' || taskState.已完成 !== true)
+      return { success: false, newPoints: currentPoints };
 
     const newPoints = currentPoints + def.rewardMcPoints;
     await DataService.updateResources({ mcPoints: newPoints });
