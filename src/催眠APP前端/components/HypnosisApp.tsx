@@ -316,6 +316,14 @@ const ActiveSessionView = ({
 };
 
 export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser, onExit }) => {
+  const normalizeDurationMinutes = (raw: string): number => {
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric)) return 1;
+    const minutes = Math.floor(numeric);
+    if (minutes <= 0) return 1;
+    return Math.min(999, minutes);
+  };
+
   // State
   const [features, setFeatures] = useState<HypnosisFeature[]>([]);
   const [isExpanded, setIsExpanded] = useState(false); // Controls the "Command Center" (Stats + Store)
@@ -324,7 +332,8 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
   const commandCenterBaseRef = useRef<HTMLDivElement>(null);
   const footerControlsRef = useRef<HTMLDivElement>(null);
   const [commandCenterMaxHeightPx, setCommandCenterMaxHeightPx] = useState(512);
-  const [duration, setDuration] = useState(10); // Minutes
+  const [durationInput, setDurationInput] = useState('10'); // Minutes
+  const duration = normalizeDurationMinutes(durationInput);
   const [globalNote, setGlobalNote] = useState('');
   const [isClosing, setIsClosing] = useState(false); // For exit animation
   const [debugEnabled, setDebugEnabled] = useState(false);
@@ -1262,8 +1271,12 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
             <Clock size={16} className="text-pink-400 mr-2" />
             <input
               type="number"
-              value={duration}
-              onChange={e => setDuration(Math.max(1, parseInt(e.target.value) || 0))}
+              inputMode="numeric"
+              min={1}
+              step={1}
+              value={durationInput}
+              onChange={e => setDurationInput(e.target.value)}
+              onBlur={() => setDurationInput(String(duration))}
               className="w-12 bg-transparent text-white font-bold text-center focus:outline-none"
             />
             <span className="text-xs text-gray-400 ml-1">分钟</span>
