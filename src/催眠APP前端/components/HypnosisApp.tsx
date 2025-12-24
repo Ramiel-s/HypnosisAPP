@@ -1132,8 +1132,10 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
                       {Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0
                         ? '已满'
                         : `¥${(
-                            Math.min(Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)), quickSupplyQty) *
-                            100
+                            Math.min(
+                              Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)),
+                              quickSupplyQty,
+                            ) * 100
                           ).toLocaleString()}`}
                     </span>
                   </div>
