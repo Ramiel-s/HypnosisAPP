@@ -30,6 +30,7 @@ export interface HypnosisFeature {
   costCurrency?: 'MC_ENERGY' | 'MC_POINTS';
   notePlaceholder?: string;
   userNote?: string; // User input
+  userNumber?: number; // Numeric input for some features
   isEnabled: boolean; // Toggle state
   purchaseRequired?: boolean; // Must be permanently purchased to use
   purchasePricePoints?: number; // Price in MC points for purchase

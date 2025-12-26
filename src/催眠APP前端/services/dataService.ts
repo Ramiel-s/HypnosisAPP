@@ -1,7 +1,6 @@
-import { Achievement, HypnosisFeature, Quest, QuestStatus, UserResources } from '../types';
-import { MvuBridge } from './mvuBridge';
-import { QUEST_DB, type QuestDefinition } from '../data/questDb';
 import { z } from 'zod';
+import { QUEST_DB, type QuestDefinition } from '../data/questDb';
+import { Achievement, HypnosisFeature, Quest, QuestStatus, UserResources } from '../types';
 import {
   canSubscribeTier,
   canUseFeature as canUseFeatureBySubscription,
@@ -13,6 +12,7 @@ import {
   type SubscriptionState,
   type SubscriptionTier,
 } from './access';
+import { MvuBridge } from './mvuBridge';
 
 const CHAT_OPTION = { type: 'chat' } as const;
 
@@ -36,7 +36,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入简单指示...',
+    notePlaceholder: '输入简单动作指示...',
   },
 
   // VIP 1
@@ -69,7 +69,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '部位 + 目标敏感度（例如：乳头 -> 80）',
+    notePlaceholder: '输入要修改的部位',
   },
   {
     id: 'vip1_truth_serum',
@@ -91,7 +91,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 1,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要增加的发情值（数字）',
+    notePlaceholder: '输入要增加的发情值',
   },
   {
     id: 'vip1_memory_erase',
@@ -102,7 +102,7 @@ const FEATURES: HypnosisFeature[] = [
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '输入要清除的记忆时长（分钟，数字）',
+    notePlaceholder: '输入要清除的记忆时长',
   },
 
   // VIP 2
@@ -120,13 +120,13 @@ const FEATURES: HypnosisFeature[] = [
   {
     id: 'vip2_pleasure',
     title: '快感赋予',
-    description: '给予一个部位无来源的快感(可多个部位叠加).',
+    description: '给予一个部位无来源的快感.',
     tier: 'VIP2',
     costType: 'PER_MINUTE',
     costValue: 5,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
-    notePlaceholder: '部位 / 强度',
+    notePlaceholder: '部位',
   },
   {
     id: 'vip2_ghost_hand',
@@ -196,7 +196,7 @@ const FEATURES: HypnosisFeature[] = [
     description: '永远无法高潮 (寸止).',
     tier: 'VIP3',
     costType: 'ONE_TIME',
-    costValue: 200,
+    costValue: 300,
     costCurrency: 'MC_ENERGY',
     isEnabled: false,
   },
@@ -448,7 +448,7 @@ type PersistedStore = {
     endVirtualMinutes: number;
     autoRenew: boolean;
   };
-  features: Record<string, { isEnabled?: boolean; userNote?: string }>;
+  features: Record<string, { isEnabled?: boolean; userNote?: string; userNumber?: number }>;
   purchases: Record<string, boolean>;
   achievements: Record<string, boolean>;
   quests: Record<string, QuestStatus>;
@@ -471,7 +471,13 @@ const STORE_SCHEMA: z.ZodType<PersistedStore> = z
     features: z
       .record(
         z.string(),
-        z.object({ isEnabled: z.boolean().optional(), userNote: z.string().optional() }).passthrough(),
+        z
+          .object({
+            isEnabled: z.boolean().optional(),
+            userNote: z.string().optional(),
+            userNumber: z.coerce.number().optional(),
+          })
+          .passthrough(),
       )
       .default({}),
     purchases: z.record(z.string(), z.coerce.boolean()).default({}),
@@ -791,7 +797,10 @@ const PERSISTENT_FEATURE_IDS = new Set<string>([]);
 
 const SUBSCRIPTION_TIER_TRIAL_LABEL = '试用期';
 
-function getSubscriptionTierLabel(subscription: SubscriptionState | null, nowVirtualMinutes: number | null): string | null {
+function getSubscriptionTierLabel(
+  subscription: SubscriptionState | null,
+  nowVirtualMinutes: number | null,
+): string | null {
   if (!subscription) return SUBSCRIPTION_TIER_TRIAL_LABEL;
   if (nowVirtualMinutes === null) return null;
   return subscription.endVirtualMinutes > nowVirtualMinutes ? subscription.tier : SUBSCRIPTION_TIER_TRIAL_LABEL;
@@ -1047,6 +1056,7 @@ export const DataService = {
       ...f,
       isEnabled: store.features?.[f.id]?.isEnabled ?? f.isEnabled,
       userNote: store.features?.[f.id]?.userNote ?? f.userNote,
+      userNumber: store.features?.[f.id]?.userNumber ?? f.userNumber,
       purchaseRequired: isPurchaseRequired(f),
       purchasePricePoints: getPurchasePricePoints(f) ?? undefined,
       isPurchased: !isPurchaseRequired(f) || Boolean(store.purchases?.[f.id]),
@@ -1109,7 +1119,7 @@ export const DataService = {
     return true;
   },
 
-  updateFeature: async (id: string, patch: { isEnabled?: boolean; userNote?: string }) => {
+  updateFeature: async (id: string, patch: { isEnabled?: boolean; userNote?: string; userNumber?: number }) => {
     await updateStoreWith(store => ({
       ...store,
       features: { ...store.features, [id]: { ...store.features[id], ...patch } },
@@ -1159,7 +1169,11 @@ export const DataService = {
         title: q.name,
         description: q.condition,
         rewardMcPoints: q.rewardMcPoints,
-        status: completed ? ('COMPLETED' as QuestStatus) : active ? ('ACTIVE' as QuestStatus) : ('AVAILABLE' as QuestStatus),
+        status: completed
+          ? ('COMPLETED' as QuestStatus)
+          : active
+            ? ('ACTIVE' as QuestStatus)
+            : ('AVAILABLE' as QuestStatus),
       };
     });
 
@@ -1196,7 +1210,9 @@ export const DataService = {
     const tasks = await MvuBridge.getTasks();
     if (!tasks) return { success: false, message: 'MVU 未就绪，无法接取任务' };
 
-    const activeTaskNames = Object.entries(tasks).filter(([, v]) => v && typeof v === 'object' && typeof (v as any).已完成 === 'boolean');
+    const activeTaskNames = Object.entries(tasks).filter(
+      ([, v]) => v && typeof v === 'object' && typeof (v as any).已完成 === 'boolean',
+    );
     if (activeTaskNames.length >= 3) return { success: false, message: '同时最多只能接取3个任务' };
     if ((tasks as any)[def.name]) return { success: false, message: '该任务已在进行中' };
 
@@ -1213,6 +1229,30 @@ export const DataService = {
     }
   },
 
+  cancelQuest: async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const def = QUEST_DATABASE.find(q => q.id === id);
+    if (!def) return { success: false, message: '未知任务' };
+    if (def.name.includes('.')) return { success: false, message: '任务名不能包含“.”' };
+
+    const { store } = normalizeChatVariables(getVariables(CHAT_OPTION));
+    if (store.quests?.[def.id] === 'CLAIMED') return { success: false, message: '该任务已完成并锁定' };
+
+    const tasks = await MvuBridge.getTasks();
+    if (!tasks) return { success: false, message: 'MVU 未就绪，无法取消任务' };
+
+    if (!(def.name in (tasks as any))) return { success: false, message: '该任务未在进行中' };
+
+    try {
+      await MvuBridge.deleteTask(def.name);
+      const after = await MvuBridge.getTasks();
+      if (after && def.name in after) return { success: false, message: '取消失败：任务未从 MVU 删除' };
+      return { success: true };
+    } catch (err) {
+      console.warn('[HypnoOS] 取消任务失败', err);
+      return { success: false, message: '取消失败：写入 MVU 出错' };
+    }
+  },
+
   claimQuest: async (id: string, currentPoints: number): Promise<{ success: boolean; newPoints: number }> => {
     const def = QUEST_DATABASE.find(q => q.id === id);
     if (!def) return { success: false, newPoints: currentPoints };
@@ -1221,7 +1261,8 @@ export const DataService = {
     const tasks = await MvuBridge.getTasks();
     if (!tasks) return { success: false, newPoints: currentPoints };
     const taskState = (tasks as any)[def.name];
-    if (!taskState || typeof taskState !== 'object' || taskState.已完成 !== true) return { success: false, newPoints: currentPoints };
+    if (!taskState || typeof taskState !== 'object' || taskState.已完成 !== true)
+      return { success: false, newPoints: currentPoints };
 
     const newPoints = currentPoints + def.rewardMcPoints;
     await DataService.updateResources({ mcPoints: newPoints });

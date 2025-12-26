@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { UserResources, Achievement, Quest } from '../types';
 import { DataService } from '../services/dataService';
+import { waitForMvuReady } from '../services/mvuBridge';
 import {
   Trophy,
   Scroll,
   ArrowLeft,
   CheckCircle,
   Lock,
+  X,
   Gift,
   Hourglass,
   Star,
@@ -61,7 +63,8 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
     let stops: Array<{ stop: () => void }> = [];
     void (async () => {
       try {
-        await waitGlobalInitialized('Mvu');
+        const ready = await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+        if (!ready) return;
         if (stopped) return;
         stops = [
           eventOn(Mvu.events.VARIABLE_INITIALIZED, requestRefresh),
@@ -106,6 +109,19 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
     setNotice(`已接取任务：${quest.title}`);
     setTimeout(() => setNotice(null), 2000);
     setQuests(prev => prev.map(q => (q.id === quest.id ? { ...q, status: 'ACTIVE' } : q)));
+    requestRefresh();
+  };
+
+  const handleCancelQuest = async (quest: Quest) => {
+    const result = await DataService.cancelQuest(quest.id);
+    if (!result.success) {
+      setNotice(`取消失败：${result.message || '未知原因'}`);
+      setTimeout(() => setNotice(null), 2500);
+      return;
+    }
+    setNotice(`已取消任务：${quest.title}`);
+    setTimeout(() => setNotice(null), 1500);
+    setQuests(prev => prev.map(q => (q.id === quest.id ? { ...q, status: 'AVAILABLE' } : q)));
     requestRefresh();
   };
 
@@ -288,6 +304,7 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
 
               const canAccept = q.status === 'AVAILABLE' && activeQuestCount < 3;
               const canClaim = q.status === 'COMPLETED';
+              const canCancel = q.status === 'ACTIVE' || q.status === 'COMPLETED';
 
               return (
                 <div
@@ -338,6 +355,14 @@ export const AchievementApp: React.FC<AchievementAppProps> = ({ userData, onUpda
                           className="bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold py-1.5 px-3 rounded-lg shadow-lg flex items-center gap-1"
                         >
                           <Gift size={12} /> 提交
+                        </button>
+                      )}
+                      {canCancel && (
+                        <button
+                          onClick={() => void handleCancelQuest(q)}
+                          className="bg-white/5 hover:bg-white/10 text-white/80 text-[11px] font-semibold py-1 px-2 rounded-lg border border-white/10 flex items-center gap-1"
+                        >
+                          <X size={12} /> 取消
                         </button>
                       )}
                       {q.status === 'CLAIMED' && <span className="text-[10px] text-white/50">锁定</span>}

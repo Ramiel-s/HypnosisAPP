@@ -14,7 +14,7 @@ import {
   User,
 } from 'lucide-react';
 import { DataService } from '../services/dataService';
-import { MvuBridge } from '../services/mvuBridge';
+import { MvuBridge, waitForMvuReady } from '../services/mvuBridge';
 
 // Wrapper for standard pages
 const PageLayout = ({ title, children, onBack, color = 'bg-gray-100' }: any) => (
@@ -66,6 +66,7 @@ function clampPercent(value: unknown): number | null {
 const STAT_ORDER: string[] = [
   '警戒度',
   '服从度',
+  '好感度',
   '性欲',
   '快感值',
   '阴蒂敏感度',
@@ -80,7 +81,7 @@ const STAT_ORDER: string[] = [
   '乳头高潮次数',
 ];
 
-const BAR_STATS = new Set(['警戒度', '服从度', '性欲', '快感值']);
+const BAR_STATS = new Set(['警戒度', '服从度', '好感度', '性欲', '快感值']);
 
 const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [vipUnlocked, setVipUnlocked] = useState(false);
@@ -220,7 +221,8 @@ const BodyScanApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     let stops: Array<{ stop: () => void }> = [];
     void (async () => {
       try {
-        await waitGlobalInitialized('Mvu');
+        const ready = await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+        if (!ready) return;
         stops = [
           eventOn(Mvu.events.VARIABLE_INITIALIZED, () => refreshRef.current()),
           eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => refreshRef.current()),
@@ -438,6 +440,8 @@ const StatRow: React.FC<{ label: string; value: unknown }> = ({ label, value }) 
       ? 'from-red-500 to-amber-400'
       : label === '服从度'
         ? 'from-emerald-400 to-cyan-400'
+        : label === '好感度'
+          ? 'from-pink-400 to-rose-400'
         : label === '性欲'
           ? 'from-fuchsia-400 to-cyan-400'
           : 'from-cyan-400 to-violet-400';
@@ -710,7 +714,8 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     let stops: Array<{ stop: () => void }> = [];
     void (async () => {
       try {
-        await waitGlobalInitialized('Mvu');
+        const ready = await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+        if (!ready) return;
         stops = [
           eventOn(Mvu.events.VARIABLE_INITIALIZED, () => void loadSystem()),
           eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => void loadSystem()),

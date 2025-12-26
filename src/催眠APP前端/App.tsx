@@ -1,11 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StatusBar } from './components/OS/StatusBar';
 import { HypnosisApp, HypnoLogoSVG } from './components/HypnosisApp';
 import { AchievementApp } from './components/AchievementApp'; // Import new component
 import { BodyStatsApp, CalendarApp, HelpApp, WipApp } from './components/CommonApps';
 import { DataService } from './services/dataService';
+import { waitForMvuReady } from './services/mvuBridge';
 import { UserResources, AppMode } from './types';
 import { Zap, Activity, Calendar, HelpCircle, Trophy, Settings, Phone, Globe, Camera } from 'lucide-react';
+
+const FALLBACK_USER_DATA: UserResources = {
+  mcEnergy: 25,
+  mcEnergyMax: 25,
+  mcPoints: 25,
+  totalConsumedMc: 0,
+  money: 6000,
+  suspicion: 0,
+};
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs);
+    promise.then(
+      value => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      err => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 const App = () => {
   // Global State
@@ -15,10 +42,37 @@ const App = () => {
   const [systemTimeText, setSystemTimeText] = useState<string | undefined>(undefined);
   const [systemDateText, setSystemDateText] = useState<string | undefined>(undefined);
   const [localNow, setLocalNow] = useState(() => new Date());
+  const userRefreshInFlightRef = useRef(false);
 
   // Initialize Data
   useEffect(() => {
-    DataService.getUserData().then(setUserData);
+    let stopped = false;
+    let retryTimer: number | null = null;
+    let attempt = 0;
+
+    const load = async () => {
+      attempt += 1;
+      try {
+        const data = await withTimeout(DataService.getUserData(), 4000, 'DataService.getUserData');
+        if (stopped) return;
+        setUserData(data);
+      } catch (err) {
+        console.warn('[HypnoOS] 初始化用户数据失败，将重试', err);
+        if (stopped) return;
+        if (attempt >= 10) {
+          setUserData(FALLBACK_USER_DATA);
+          return;
+        }
+        retryTimer = window.setTimeout(() => void load(), Math.min(1000, 150 * attempt));
+      }
+    };
+
+    void load();
+
+    return () => {
+      stopped = true;
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -41,6 +95,19 @@ const App = () => {
   useEffect(() => {
     void refreshUnlocks();
   }, []);
+
+  const refreshUserData = async () => {
+    if (userRefreshInFlightRef.current) return;
+    userRefreshInFlightRef.current = true;
+    try {
+      const data = await withTimeout(DataService.getUserData(), 4000, 'DataService.getUserData');
+      setUserData(data);
+    } catch (err) {
+      console.warn('[HypnoOS] 刷新用户数据失败', err);
+    } finally {
+      userRefreshInFlightRef.current = false;
+    }
+  };
 
   useEffect(() => {
     if (currentApp !== AppMode.HOME) return;
@@ -73,10 +140,14 @@ const App = () => {
 
     void (async () => {
       try {
-        await waitGlobalInitialized('Mvu');
+        const ready = await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+        if (!ready) return;
         if (stopped) return;
         stops = [
-          eventOn(Mvu.events.VARIABLE_INITIALIZED, requestRefresh),
+          eventOn(Mvu.events.VARIABLE_INITIALIZED, () => {
+            requestRefresh();
+            void refreshUserData();
+          }),
           eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, requestRefresh),
         ];
       } catch {

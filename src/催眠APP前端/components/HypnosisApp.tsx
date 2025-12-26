@@ -321,7 +321,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     if (!Number.isFinite(numeric)) return 1;
     const minutes = Math.floor(numeric);
     if (minutes <= 0) return 1;
-    return Math.min(999, minutes);
+    return Math.min(9999, minutes);
   };
 
   // State
@@ -345,6 +345,8 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     autoRenew: boolean;
   } | null>(null);
   const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
+  const [purchaseShakeFeatureId, setPurchaseShakeFeatureId] = useState<string | null>(null);
+  const purchaseShakeTimerRef = useRef<number | null>(null);
 
   // Immersive Mode State
   const [isActive, setIsActive] = useState(false);
@@ -372,6 +374,32 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
       stopped = true;
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (purchaseShakeTimerRef.current !== null) {
+        window.clearTimeout(purchaseShakeTimerRef.current);
+        purchaseShakeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const triggerPurchaseShake = (featureId: string) => {
+    if (purchaseShakeTimerRef.current !== null) window.clearTimeout(purchaseShakeTimerRef.current);
+
+    setPurchaseShakeFeatureId(null);
+    window.requestAnimationFrame(() => {
+      setPurchaseShakeFeatureId(featureId);
+      containerRef.current
+        ?.querySelector<HTMLButtonElement>(`button[data-hypno-purchase="${featureId}"]`)
+        ?.focus({ preventScroll: true });
+    });
+
+    purchaseShakeTimerRef.current = window.setTimeout(() => {
+      setPurchaseShakeFeatureId(prev => (prev === featureId ? null : prev));
+      purchaseShakeTimerRef.current = null;
+    }, 500);
+  };
 
   useEffect(() => {
     const update = () => {
@@ -484,21 +512,64 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     return Number.isFinite(n) ? n : null;
   };
 
+  const clampInt = (value: unknown, fallback: number, min: number, max: number) => {
+    const n = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    const i = Math.floor(n);
+    return Math.max(min, Math.min(max, i));
+  };
+
+  const getFeatureNumericConfig = (
+    feature: HypnosisFeature,
+  ):
+    | {
+        label: string;
+        unit: string;
+        min: number;
+        max: number;
+        step?: number;
+        hint?: string;
+      }
+    | null => {
+    switch (feature.id) {
+      case 'vip1_temp_sensitivity':
+        return { label: '敏感度增加', unit: '点', min: 1, max: 999, step: 1, hint: '每点2MC能量' };
+      case 'vip1_estrus':
+        return { label: '发情增加', unit: '', min: 1, max: 999, step: 1 };
+      case 'vip1_memory_erase':
+        return { label: '记忆消除时长', unit: '分钟', min: 1, max: 1440, step: 1 };
+      case 'vip2_pleasure':
+        return { label: '给予快感', unit: '', min: 1, max: 999, step: 1, hint: '一次性给予目标快感值' };
+      default:
+        return null;
+    }
+  };
+
   const getFeatureCost = (feature: HypnosisFeature): { energy: number; points: number } => {
     if (feature.id === 'vip1_stats') return { energy: 0, points: 0 };
     const currency = feature.costCurrency ?? 'MC_ENERGY';
-    const persons = parseFirstNumber(feature.userNote) ?? 1;
+    const persons = feature.userNumber ?? parseFirstNumber(feature.userNote) ?? 1;
 
     let amount = 0;
     switch (feature.id) {
       case 'vip1_estrus': {
-        const heat = parseFirstNumber(feature.userNote) ?? 1;
+        const heat = clampInt(feature.userNumber ?? parseFirstNumber(feature.userNote), 1, 1, 999);
         amount = feature.costValue * heat;
         break;
       }
       case 'vip1_memory_erase': {
-        const minutes = parseFirstNumber(feature.userNote) ?? 1;
+        const minutes = clampInt(feature.userNumber ?? parseFirstNumber(feature.userNote), 1, 1, 240);
         amount = feature.costValue * minutes;
+        break;
+      }
+      case 'vip1_temp_sensitivity': {
+        const delta = clampInt(feature.userNumber ?? parseFirstNumber(feature.userNote), 1, 1, 100);
+        amount = 2 * delta;
+        break;
+      }
+      case 'vip2_pleasure': {
+        const intensity = clampInt(feature.userNumber ?? parseFirstNumber(feature.userNote), 1, 1, 999);
+        amount = feature.costValue * intensity * duration;
         break;
       }
       case 'vip4_closed_space_common_sense': {
@@ -651,23 +722,49 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
     const target = features.find(f => f.id === id);
     if (target && target.purchaseRequired && !target.isPurchased) {
-      setIsExpanded(true);
-      window.alert(`需要先购买：${target.purchasePricePoints ?? 0} PT`);
+      triggerPurchaseShake(id);
       return;
     }
     if (target && !hasAccessForFeature(target)) {
-      setIsExpanded(true);
-      window.alert('当前功能需要有效订阅后才能使用');
       return;
     }
 
-    setFeatures(prev => prev.map(f => (f.id === id ? { ...f, isEnabled: !f.isEnabled } : f)));
-    void DataService.updateFeature(id, { isEnabled: nextEnabled });
+    const getNumericDefault = (featureId: string): number | null => {
+      switch (featureId) {
+        case 'vip1_temp_sensitivity':
+          return 1;
+        case 'vip1_estrus':
+          return 1;
+        case 'vip1_memory_erase':
+          return 10;
+        case 'vip2_pleasure':
+          return 3;
+        default:
+          return null;
+      }
+    };
+
+    const nextNumber =
+      nextEnabled && target && typeof target.userNumber === 'undefined' ? getNumericDefault(target.id) : null;
+
+    setFeatures(prev =>
+      prev.map(f =>
+        f.id === id
+          ? { ...f, isEnabled: !f.isEnabled, ...(nextNumber === null ? null : { userNumber: nextNumber }) }
+          : f,
+      ),
+    );
+    void DataService.updateFeature(id, { isEnabled: nextEnabled, ...(nextNumber === null ? null : { userNumber: nextNumber }) });
   };
 
   const updateFeatureNote = (id: string, note: string) => {
     setFeatures(prev => prev.map(f => (f.id === id ? { ...f, userNote: note } : f)));
     void DataService.updateFeature(id, { userNote: note });
+  };
+
+  const updateFeatureNumber = (id: string, value: number | null) => {
+    setFeatures(prev => prev.map(f => (f.id === id ? { ...f, userNumber: value === null ? undefined : value } : f)));
+    void DataService.updateFeature(id, { userNumber: value === null ? undefined : value });
   };
 
   const handleStart = async () => {
@@ -828,6 +925,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     const formatFeatureCost = (feature: HypnosisFeature) => {
       const currency = feature.costCurrency === 'MC_POINTS' ? 'PT' : 'MC';
       if (feature.id === 'vip1_stats') return '订阅后自动解锁';
+      if (feature.id === 'vip1_temp_sensitivity') return `每点敏感度: 2 ${currency}`;
       if (feature.id === 'vip1_estrus') return `每点发情值: ${feature.costValue} ${currency}`;
       if (feature.id === 'vip1_memory_erase') return `每分钟记忆: ${feature.costValue} ${currency}`;
       if (feature.id === 'vip4_closed_space_common_sense') return `每人每分钟: ${feature.costValue} ${currency}`;
@@ -888,18 +986,15 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
                 <div
                   className={[
                     'p-3 flex justify-between items-center active:bg-white/5',
-                    canToggle ? 'cursor-pointer' : 'cursor-not-allowed',
+                    canToggle || lockedByPurchase ? 'cursor-pointer hover:bg-white/5' : 'cursor-not-allowed',
                   ].join(' ')}
                   onClick={() => {
                     if (isLocked) return;
                     if (lockedByPurchase) {
-                      setIsExpanded(true);
-                      window.alert(`需要先购买（${purchasePricePoints} PT）`);
+                      triggerPurchaseShake(feature.id);
                       return;
                     }
                     if (lockedBySubscription) {
-                      setIsExpanded(true);
-                      window.alert(`需要有效订阅（${feature.tier}）`);
                       return;
                     }
                     toggleFeature(feature.id);
@@ -934,7 +1029,19 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
                           void purchaseFeature(feature);
                         }}
                         disabled={userData.mcPoints < purchasePricePoints}
-                        className="text-[10px] px-2 py-1 rounded-lg bg-amber-500 text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-hypno-purchase={feature.id}
+                        className={[
+                          'text-[10px] px-3 py-1.5 rounded-xl font-extrabold tracking-wide select-none',
+                          'border border-amber-200/20 text-black',
+                          'bg-gradient-to-r from-amber-300 via-orange-400 to-amber-300',
+                          'shadow-[0_6px_18px_rgba(245,158,11,0.22)]',
+                          'transition-transform transition-shadow duration-150',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70',
+                          userData.mcPoints < purchasePricePoints
+                            ? 'opacity-50 cursor-not-allowed grayscale'
+                            : 'hover:shadow-[0_10px_26px_rgba(245,158,11,0.35)] active:scale-[0.97] cursor-pointer',
+                          purchaseShakeFeatureId === feature.id ? 'hypno-shake' : '',
+                        ].join(' ')}
                       >
                         购买 {purchasePricePoints} PT
                       </button>
@@ -958,6 +1065,58 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
                 {feature.isEnabled && !lockedBySubscription && !lockedByPurchase && (
                   <div className="px-3 pb-3 pt-0 border-t border-white/5 animate-slide-down">
                     <p className="text-xs text-gray-300 mt-2 leading-relaxed opacity-90">{feature.description}</p>
+
+                    {(() => {
+                      const cfg = getFeatureNumericConfig(feature);
+                      if (!cfg) return null;
+                      const currentRaw = feature.userNumber;
+                      const current = typeof currentRaw === 'number' && Number.isFinite(currentRaw) ? currentRaw : '';
+                      const cost = getFeatureCost(feature);
+                      const currency = feature.costCurrency ?? 'MC_ENERGY';
+                      const computed = currency === 'MC_POINTS' ? cost.points : cost.energy;
+                      const currencyLabel = currency === 'MC_POINTS' ? 'PT' : 'MC';
+                      return (
+                        <div className="mt-3 grid grid-cols-2 gap-2 items-end">
+                          <label className="col-span-1">
+                            <div className="text-[10px] text-gray-400 mb-1 flex items-center justify-between gap-2">
+                              <span className="truncate">
+                                {cfg.label}
+                                {cfg.unit ? `（${cfg.unit}）` : ''}
+                              </span>
+                              {cfg.hint && <span className="text-[10px] text-gray-500 truncate">{cfg.hint}</span>}
+                            </div>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={cfg.min}
+                              max={cfg.max}
+                              step={cfg.step ?? 1}
+                              value={current}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                if (!raw) {
+                                  updateFeatureNumber(feature.id, null);
+                                  return;
+                                }
+                                const next = Number(raw);
+                                if (!Number.isFinite(next)) return;
+                                const clamped = Math.max(cfg.min, Math.min(cfg.max, Math.floor(next)));
+                                updateFeatureNumber(feature.id, clamped);
+                              }}
+                              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-pink-500/50 transition-colors"
+                              placeholder={`${cfg.min}-${cfg.max}`}
+                            />
+                          </label>
+                          <div className="col-span-1 text-right">
+                            <div className="text-[10px] text-gray-500">自动计算费用</div>
+                            <div className="text-xs font-bold text-amber-300 tabular-nums">
+                              {computed} {currencyLabel}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {feature.id !== 'vip1_stats' && (
                       <textarea
                         placeholder={feature.notePlaceholder || '在此输入具体指令备注...'}

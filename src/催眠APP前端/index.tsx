@@ -2,6 +2,7 @@ import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { waitForMvuReady } from './services/mvuBridge';
 
 let root: ReactDOM.Root | undefined;
 
@@ -24,6 +25,13 @@ function unmount() {
 }
 
 $(() => {
-  mount();
-  $(window).on('pagehide', unmount);
+  void (async () => {
+    try {
+      await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+    } catch {
+      // ignore
+    }
+    mount();
+    $(window).on('pagehide', unmount);
+  })();
 });
