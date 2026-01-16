@@ -2,7 +2,7 @@ import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { waitForMvuReady } from './services/mvuBridge';
+import { MvuBridge, waitForMvuReady } from './services/mvuBridge';
 
 let root: ReactDOM.Root | undefined;
 
@@ -31,6 +31,7 @@ $(() => {
     } catch {
       // ignore
     }
+    void MvuBridge.resetThisTurnAppOperationLog();
     mount();
     $(window).on('pagehide', unmount);
   })();

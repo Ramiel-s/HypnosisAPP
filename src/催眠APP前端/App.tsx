@@ -6,7 +6,7 @@ import { BodyStatsApp, CalendarApp, HelpApp, WipApp } from './components/CommonA
 import { DataService } from './services/dataService';
 import { waitForMvuReady } from './services/mvuBridge';
 import { UserResources, AppMode } from './types';
-import { Zap, Activity, Calendar, HelpCircle, Trophy, Settings, Phone, Globe, Camera } from 'lucide-react';
+import { Activity, Calendar, HelpCircle, Trophy, Globe } from 'lucide-react';
 
 const FALLBACK_USER_DATA: UserResources = {
   mcEnergy: 25,
@@ -183,6 +183,7 @@ const App = () => {
               bodyStatsUnlocked={bodyStatsUnlocked}
               systemTimeText={systemTimeText}
               systemDateText={systemDateText}
+              localNow={localNow}
             />
           );
         return <BodyStatsApp onBack={() => setCurrentApp(AppMode.HOME)} />;
@@ -250,7 +251,53 @@ const HomeScreen = ({
   const displayDate =
     systemDateText || localNow.toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const apps = [
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const appendMcAnonTagToThisFloor = async () => {
+    const marker = '<匿名版></匿名版>';
+    try {
+      const messageId = (() => {
+        try {
+          return getCurrentMessageId();
+        } catch {
+          const latest = getChatMessages(-1)[0];
+          return latest?.message_id ?? 0;
+        }
+      })();
+
+      const chatMessage = getChatMessages(messageId)[0];
+      if (!chatMessage) throw new Error(`missing chat message: ${messageId}`);
+
+      if (chatMessage.message.includes(marker)) {
+        setNotice('已存在');
+        window.setTimeout(() => setNotice(null), 1500);
+        return;
+      }
+
+      const base = chatMessage.message.replace(/\s+$/, '');
+      const nextMessage = `${base}${base ? '\n' : ''}${marker}`;
+
+      await setChatMessages([{ message_id: messageId, message: nextMessage }], { refresh: 'affected' });
+      setNotice('已插入');
+      window.setTimeout(() => setNotice(null), 1500);
+    } catch (err) {
+      console.warn('[HypnoOS] 插入匿名版标签失败', err);
+      setNotice('插入失败');
+      window.setTimeout(() => setNotice(null), 1500);
+    }
+  };
+
+  type DesktopApp = {
+    id: string;
+    name: string;
+    icon: any;
+    color: string;
+    mode: AppMode;
+    disabled: boolean;
+    action?: () => void | Promise<void>;
+  };
+
+  const apps: DesktopApp[] = [
     {
       id: 'hypno',
       name: '催眠APP',
@@ -277,11 +324,17 @@ const HomeScreen = ({
       mode: AppMode.ACHIEVEMENTS,
       disabled: false,
     },
-    { id: 'settings', name: '设置', icon: Settings, color: 'bg-gray-800', mode: AppMode.WIP, disabled: true },
-    { id: 'browser', name: 'Safari', icon: Globe, color: 'bg-blue-900', mode: AppMode.WIP, disabled: true },
-    { id: 'cam', name: '相机', icon: Camera, color: 'bg-gray-800', mode: AppMode.WIP, disabled: true },
+    {
+      id: 'mc-anon',
+      name: 'MC匿名版',
+      icon: Globe,
+      color: 'bg-blue-900',
+      mode: AppMode.HOME,
+      disabled: false,
+      action: appendMcAnonTagToThisFloor,
+    },
   ];
-  const visibleApps = bodyStatsUnlocked
+  const visibleApps: DesktopApp[] = bodyStatsUnlocked
     ? [
         apps[0],
         {
@@ -297,7 +350,7 @@ const HomeScreen = ({
     : apps;
 
   return (
-    <div className="h-full w-full bg-gradient-to-b from-slate-900 via-purple-950 to-black flex flex-col pt-12 pb-24 animate-fade-in">
+    <div className="relative h-full w-full bg-gradient-to-b from-slate-900 via-purple-950 to-black flex flex-col pt-12 pb-24 animate-fade-in">
       {/* Date Widget */}
       <div className="px-6 mb-8 text-white/90 drop-shadow-md">
         <div className="text-6xl font-thin tracking-tighter">{displayTime}</div>
@@ -310,7 +363,14 @@ const HomeScreen = ({
           <div
             key={app.id}
             className={`flex flex-col items-center gap-1.5 group ${app.disabled ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer'}`}
-            onClick={() => !app.disabled && onLaunchApp(app.mode)}
+            onClick={() => {
+              if (app.disabled) return;
+              if (typeof app.action === 'function') {
+                void app.action();
+                return;
+              }
+              onLaunchApp(app.mode);
+            }}
           >
             <div
               className={`
@@ -330,6 +390,12 @@ const HomeScreen = ({
           </div>
         ))}
       </div>
+
+      {notice && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-8 px-3 py-1.5 rounded-full bg-black/60 text-white text-xs border border-white/10 shadow-lg backdrop-blur-sm">
+          {notice}
+        </div>
+      )}
 
       {/* Dock removed per request */}
     </div>

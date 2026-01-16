@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UserResources, HypnosisFeature, VIP_LEVELS } from '../types';
 import { DataService, SUBSCRIPTION_PRICES } from '../services/dataService';
+import { MvuBridge } from '../services/mvuBridge';
 import { buildHypnosisSendMessage } from '../prompts/hypnosisSend';
 import {
   Battery,
@@ -485,6 +486,10 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
         const nextSub = await DataService.getSubscription();
         if (stopped) return;
         setSubscription(nextSub as any);
+        if (auto.renewed && nextSub?.tier) {
+          const price = SUBSCRIPTION_PRICES[nextSub.tier] ?? 0;
+          void MvuBridge.appendThisTurnAppOperationLog(`自动续订 VIP${nextSub.tier.slice(3)}（-¥${price.toLocaleString()}）`);
+        }
       } catch (err) {
         console.warn('[HypnoOS] 订阅/时间同步失败', err);
       }
@@ -676,6 +681,8 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     setSubscription(result.subscription ?? null);
     setSubscriptionNotice('订阅成功');
     setTimeout(() => setSubscriptionNotice(null), 2000);
+    const price = SUBSCRIPTION_PRICES[tier] ?? 0;
+    void MvuBridge.appendThisTurnAppOperationLog(`订阅 VIP${tier.slice(3)}（-¥${price.toLocaleString()}）`);
   };
 
   const purchaseFeature = async (feature: HypnosisFeature) => {
@@ -689,6 +696,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     setFeatures(prev => prev.map(f => (f.id === feature.id ? { ...f, isPurchased: true } : f)));
     setSubscriptionNotice(`已购买：-${price} PT`);
     setTimeout(() => setSubscriptionNotice(null), 1500);
+    void MvuBridge.appendThisTurnAppOperationLog(`解锁功能「${feature.title}」（-${price} PT）`);
   };
 
   const enableDebugMode = async () => {
@@ -793,6 +801,9 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
       .map(f => f);
 
     // Deduct resources BEFORE sending message (the iframe may reload after chat update)
+    await MvuBridge.appendThisTurnAppOperationLog(
+      `启动催眠 ${duration}分钟（-${totalEnergyCost} MC${totalPointsCost > 0 ? `, -${totalPointsCost} PT` : ''}）`,
+    );
     const newEnergy = Math.max(0, userData.mcEnergy - totalEnergyCost);
     const newPoints = Math.max(0, userData.mcPoints - totalPointsCost);
     const newTotalConsumed = userData.totalConsumedMc + totalEnergyCost + totalPointsCost;
@@ -863,7 +874,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     return Math.min(999, parsed);
   }, [quickSupplyQtyInput]);
 
-  const purchaseEnergy = (desiredAmount: number) => {
+  const purchaseEnergy = async (desiredAmount: number) => {
     const unitPrice = 100;
     const amount = Math.floor(desiredAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
@@ -875,27 +886,53 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     const costMoney = unitPrice * actualAmount;
     if (userData.money < costMoney) return;
 
-    onUpdateUser({
-      ...userData,
-      money: userData.money - costMoney,
-      mcEnergy: Math.min(userData.mcEnergyMax, userData.mcEnergy + actualAmount),
-    });
+    const nextMoney = userData.money - costMoney;
+    const nextEnergy = Math.min(userData.mcEnergyMax, userData.mcEnergy + actualAmount);
+    try {
+      const persisted = await DataService.updateResources({
+        money: nextMoney,
+        mcEnergy: nextEnergy,
+      });
+      onUpdateUser(persisted);
+    } catch (err) {
+      console.warn('[HypnoOS] 购买能量持久化失败', err);
+      onUpdateUser({
+        ...userData,
+        money: nextMoney,
+        mcEnergy: nextEnergy,
+      });
+    }
+    void MvuBridge.appendThisTurnAppOperationLog(`购买能量 +${actualAmount} MC（-¥${costMoney.toLocaleString()}）`);
   };
 
-  const purchaseMaxEnergy = (desiredAmount: number) => {
+  const purchaseMaxEnergy = async (desiredAmount: number) => {
     const amount = Math.floor(desiredAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
     if (userData.mcPoints < amount) return;
 
-    onUpdateUser({
-      ...userData,
-      mcPoints: userData.mcPoints - amount,
-      mcEnergyMax: userData.mcEnergyMax + amount,
-      totalConsumedMc: userData.totalConsumedMc + amount,
-    });
+    const nextPoints = userData.mcPoints - amount;
+    const nextEnergyMax = userData.mcEnergyMax + amount;
+    const nextTotalConsumed = userData.totalConsumedMc + amount;
+    try {
+      const persisted = await DataService.updateResources({
+        mcPoints: nextPoints,
+        mcEnergyMax: nextEnergyMax,
+        totalConsumedMc: nextTotalConsumed,
+      });
+      onUpdateUser(persisted);
+    } catch (err) {
+      console.warn('[HypnoOS] 提升能量上限持久化失败', err);
+      onUpdateUser({
+        ...userData,
+        mcPoints: nextPoints,
+        mcEnergyMax: nextEnergyMax,
+        totalConsumedMc: nextTotalConsumed,
+      });
+    }
+    void MvuBridge.appendThisTurnAppOperationLog(`提升能量上限 +${amount}（-${amount} PT）`);
   };
 
-  const purchasePoints = (desiredAmount: number) => {
+  const purchasePoints = async (desiredAmount: number) => {
     const unitPrice = 1000;
     const amount = Math.floor(desiredAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
@@ -903,11 +940,23 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
     const costMoney = unitPrice * amount;
     if (userData.money < costMoney) return;
 
-    onUpdateUser({
-      ...userData,
-      mcPoints: userData.mcPoints + amount,
-      money: userData.money - costMoney,
-    });
+    const nextPoints = userData.mcPoints + amount;
+    const nextMoney = userData.money - costMoney;
+    try {
+      const persisted = await DataService.updateResources({
+        mcPoints: nextPoints,
+        money: nextMoney,
+      });
+      onUpdateUser(persisted);
+    } catch (err) {
+      console.warn('[HypnoOS] 充值点数持久化失败', err);
+      onUpdateUser({
+        ...userData,
+        mcPoints: nextPoints,
+        money: nextMoney,
+      });
+    }
+    void MvuBridge.appendThisTurnAppOperationLog(`充值点数 +${amount} PT（-¥${costMoney.toLocaleString()}）`);
   };
 
   // --- Render Helpers ---
@@ -1277,7 +1326,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
               <div className="grid grid-cols-2 gap-2">
                 {/* Buy Energy */}
                 <button
-                  onClick={() => purchaseEnergy(quickSupplyQty)}
+                  onClick={() => void purchaseEnergy(quickSupplyQty)}
                   disabled={
                     Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0 ||
                     userData.money <
@@ -1305,7 +1354,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
                 {/* Buy Max Energy */}
                 <button
-                  onClick={() => purchaseMaxEnergy(quickSupplyQty)}
+                  onClick={() => void purchaseMaxEnergy(quickSupplyQty)}
                   disabled={userData.mcPoints < quickSupplyQty}
                   className="flex flex-col items-start bg-purple-900/20 border border-purple-500/20 hover:bg-purple-900/30 p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1321,7 +1370,7 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
               {/* Buy Points */}
               <button
-                onClick={() => purchasePoints(quickSupplyQty)}
+                onClick={() => void purchasePoints(quickSupplyQty)}
                 disabled={userData.money < quickSupplyQty * 1000}
                 className="w-full flex justify-between items-center bg-white/5 hover:bg-white/10 p-2 rounded-lg border border-white/5 transition-colors active:scale-[0.98]"
               >
@@ -1508,17 +1557,38 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
               <div className="w-full space-y-2">
                 <button
-                  onClick={() => {
-                    const topUpCost = missingEnergy * 100 + missingPoints * 1000;
-                    if (userData.money < topUpCost) return;
-                    onUpdateUser({
-                      ...userData,
-                      money: userData.money - topUpCost,
-                      mcEnergy: Math.min(userData.mcEnergyMax, userData.mcEnergy + missingEnergy),
-                      mcPoints: userData.mcPoints + missingPoints,
-                    });
-                    setShowLowEnergyModal(false);
-                  }}
+                  onClick={() =>
+                    void (async () => {
+                      const topUpCost = missingEnergy * 100 + missingPoints * 1000;
+                      if (userData.money < topUpCost) return;
+
+                      const nextMoney = userData.money - topUpCost;
+                      const nextEnergy = Math.min(userData.mcEnergyMax, userData.mcEnergy + missingEnergy);
+                      const nextPoints = userData.mcPoints + missingPoints;
+
+                      try {
+                        const persisted = await DataService.updateResources({
+                          money: nextMoney,
+                          mcEnergy: nextEnergy,
+                          mcPoints: nextPoints,
+                        });
+                        onUpdateUser(persisted);
+                      } catch (err) {
+                        console.warn('[HypnoOS] 补齐资源持久化失败', err);
+                        onUpdateUser({
+                          ...userData,
+                          money: nextMoney,
+                          mcEnergy: nextEnergy,
+                          mcPoints: nextPoints,
+                        });
+                      }
+
+                      void MvuBridge.appendThisTurnAppOperationLog(
+                        `补齐资源（-¥${topUpCost.toLocaleString()}, +${missingEnergy} MC, +${missingPoints} PT）`,
+                      );
+                      setShowLowEnergyModal(false);
+                    })()
+                  }
                   disabled={userData.money < missingEnergy * 100 + missingPoints * 1000}
                   className="w-full py-3 bg-white text-black font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                 >

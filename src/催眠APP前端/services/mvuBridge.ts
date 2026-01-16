@@ -2,6 +2,19 @@ import _ from 'lodash';
 import type { UserResources } from '../types';
 
 const UPDATE_REASON = '催眠APP前端';
+const THIS_TURN_APP_OPERATION_LOG_PATH = '本轮APP操作';
+const DEFAULT_APP_OPERATION_LOG_VALUE = '无';
+
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function enqueueMvuWrite<T>(task: () => Promise<T>): Promise<T> {
+  const next = writeQueue.then(task, task);
+  writeQueue = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
 
 type WaitOptions = {
   timeoutMs?: number;
@@ -97,6 +110,12 @@ async function setIfChanged(mvu: Mvu.MvuData, path: string, nextValue: unknown, 
   return true;
 }
 
+function normalizeAppOperationLogValue(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_APP_OPERATION_LOG_VALUE;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : DEFAULT_APP_OPERATION_LOG_VALUE;
+}
+
 export const MvuBridge = {
   getStatData: async (): Promise<Record<string, any> | null> => {
     const data = await getMvuData();
@@ -125,70 +144,124 @@ export const MvuBridge = {
   },
 
   syncUserResources: async (user: UserResources) => {
-    const data = await getMvuData();
-    if (!data) return;
+    return enqueueMvuWrite(async () => {
+      const data = await getMvuData();
+      if (!data) return;
 
-    const { mvu, option } = data;
-    let changed = false;
+      const { mvu, option } = data;
+      let changed = false;
 
-    if (await setIfChanged(mvu, '系统._MC能量', user.mcEnergy)) changed = true;
-    if (await setIfChanged(mvu, '系统._MC能量上限', user.mcEnergyMax)) changed = true;
-    if (await setIfChanged(mvu, '系统.当前MC点', user.mcPoints)) changed = true;
-    if (await setIfChanged(mvu, '系统._累计消耗MC点', user.totalConsumedMc)) changed = true;
-    if (await setIfChanged(mvu, '系统.持有零花钱', user.money)) changed = true;
-    if (await setIfChanged(mvu, '系统.主角可疑度', user.suspicion)) changed = true;
+      if (await setIfChanged(mvu, '系统._MC能量', user.mcEnergy)) changed = true;
+      if (await setIfChanged(mvu, '系统._MC能量上限', user.mcEnergyMax)) changed = true;
+      if (await setIfChanged(mvu, '系统.当前MC点', user.mcPoints)) changed = true;
+      if (await setIfChanged(mvu, '系统._累计消耗MC点', user.totalConsumedMc)) changed = true;
+      if (await setIfChanged(mvu, '系统.持有零花钱', user.money)) changed = true;
+      if (await setIfChanged(mvu, '系统.主角可疑度', user.suspicion)) changed = true;
 
-    if (changed) {
-      await Mvu.replaceMvuData(mvu, option);
-    }
+      if (changed) {
+        await Mvu.replaceMvuData(mvu, option);
+      }
+    });
   },
 
   setTask: async (taskName: string, payload: { 完成条件: string; 已完成: boolean }) => {
-    const data = await getMvuData();
-    if (!data) return false;
-    const { mvu, option } = data;
-    const path = `任务.${taskName}`;
-    const prev = _.get(mvu.stat_data, path);
-    if (_.isEqual(prev, payload)) return false;
-    _.set(mvu.stat_data, path, payload);
-    await Mvu.replaceMvuData(mvu, option);
-    return true;
+    return enqueueMvuWrite(async () => {
+      const data = await getMvuData();
+      if (!data) return false;
+      const { mvu, option } = data;
+      const path = `任务.${taskName}`;
+      const prev = _.get(mvu.stat_data, path);
+      if (_.isEqual(prev, payload)) return false;
+      _.set(mvu.stat_data, path, payload);
+      await Mvu.replaceMvuData(mvu, option);
+      return true;
+    });
   },
 
   deleteTask: async (taskName: string) => {
-    const data = await getMvuData();
-    if (!data) return false;
-    const { mvu, option } = data;
+    return enqueueMvuWrite(async () => {
+      const data = await getMvuData();
+      if (!data) return false;
+      const { mvu, option } = data;
 
-    const path = `任务.${taskName}`;
-    const prev = _.get(mvu.stat_data, path);
-    if (typeof prev === 'undefined') return false;
+      const path = `任务.${taskName}`;
+      const prev = _.get(mvu.stat_data, path);
+      if (typeof prev === 'undefined') return false;
 
-    _.unset(mvu.stat_data, path);
-    await Mvu.replaceMvuData(mvu, option);
-    return true;
+      _.unset(mvu.stat_data, path);
+      await Mvu.replaceMvuData(mvu, option);
+      return true;
+    });
   },
 
   syncPersistedStore: async (store: unknown) => {
-    const data = await getMvuData();
-    if (!data) return;
+    return enqueueMvuWrite(async () => {
+      const data = await getMvuData();
+      if (!data) return;
 
-    const { mvu, option } = data;
-    const changed = await setIfChanged(mvu, '系统._hypnoos', store);
-    if (changed) {
-      await Mvu.replaceMvuData(mvu, option);
-    }
+      const { mvu, option } = data;
+      const changed = await setIfChanged(mvu, '系统._hypnoos', store);
+      if (changed) {
+        await Mvu.replaceMvuData(mvu, option);
+      }
+    });
   },
 
   syncSubscriptionTier: async (tierLabel: string) => {
-    if (typeof (globalThis as any).Mvu === 'undefined') return;
-    const data = await getMvuData();
-    if (!data) return;
+    return enqueueMvuWrite(async () => {
+      if (typeof (globalThis as any).Mvu === 'undefined') return;
+      const data = await getMvuData();
+      if (!data) return;
 
-    const { mvu, option } = data;
-    const changed = await setIfChanged(mvu, '系统._催眠APP订阅等级', tierLabel);
-    if (changed) {
-      await Mvu.replaceMvuData(mvu, option);
-    }
+      const { mvu, option } = data;
+      const changed = await setIfChanged(mvu, '系统._催眠APP订阅等级', tierLabel);
+      if (changed) {
+        await Mvu.replaceMvuData(mvu, option);
+      }
+    });
+  },
+
+  resetThisTurnAppOperationLog: async () => {
+    return enqueueMvuWrite(async () => {
+      try {
+        const data = await getMvuData();
+        if (!data) return false;
+
+        const { mvu, option } = data;
+        const changed = await setIfChanged(mvu, THIS_TURN_APP_OPERATION_LOG_PATH, DEFAULT_APP_OPERATION_LOG_VALUE);
+        if (changed) {
+          await Mvu.replaceMvuData(mvu, option);
+        }
+        return changed;
+      } catch (err) {
+        console.warn('[HypnoOS] 本轮APP操作重置失败', err);
+        return false;
+      }
+    });
+  },
+
+  appendThisTurnAppOperationLog: async (entry: string) => {
+    return enqueueMvuWrite(async () => {
+      try {
+        const normalizedEntry = typeof entry === 'string' ? entry.trim() : '';
+        if (!normalizedEntry) return false;
+
+        const data = await getMvuData();
+        if (!data) return false;
+
+        const { mvu, option } = data;
+        const prev = normalizeAppOperationLogValue(_.get(mvu.stat_data, THIS_TURN_APP_OPERATION_LOG_PATH));
+        const base = prev === DEFAULT_APP_OPERATION_LOG_VALUE ? '' : prev;
+        const nextValue = base ? `${base}\n${normalizedEntry}` : normalizedEntry;
+        const changed = await setIfChanged(mvu, THIS_TURN_APP_OPERATION_LOG_PATH, nextValue);
+        if (changed) {
+          await Mvu.replaceMvuData(mvu, option);
+        }
+        return changed;
+      } catch (err) {
+        console.warn('[HypnoOS] 本轮APP操作写入失败', err);
+        return false;
+      }
+    });
   },
 };
