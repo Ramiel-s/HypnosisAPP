@@ -526,16 +526,14 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
 
   const getFeatureNumericConfig = (
     feature: HypnosisFeature,
-  ):
-    | {
-        label: string;
-        unit: string;
-        min: number;
-        max: number;
-        step?: number;
-        hint?: string;
-      }
-    | null => {
+  ): {
+    label: string;
+    unit: string;
+    min: number;
+    max: number;
+    step?: number;
+    hint?: string;
+  } | null => {
     switch (feature.id) {
       case 'vip1_temp_sensitivity':
         return { label: '敏感度增加', unit: '点', min: 1, max: 999, step: 1, hint: '每点2MC能量' };
@@ -762,7 +760,10 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
           : f,
       ),
     );
-    void DataService.updateFeature(id, { isEnabled: nextEnabled, ...(nextNumber === null ? null : { userNumber: nextNumber }) });
+    void DataService.updateFeature(id, {
+      isEnabled: nextEnabled,
+      ...(nextNumber === null ? null : { userNumber: nextNumber }),
+    });
   };
 
   const updateFeatureNote = (id: string, note: string) => {
@@ -1340,8 +1341,10 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
                       {Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)) <= 0
                         ? '已满'
                         : `¥${(
-                            Math.min(Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)), quickSupplyQty) *
-                            100
+                            Math.min(
+                              Math.max(0, userData.mcEnergyMax - Math.floor(userData.mcEnergy)),
+                              quickSupplyQty,
+                            ) * 100
                           ).toLocaleString()}`}
                     </span>
                   </div>
