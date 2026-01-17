@@ -107,7 +107,7 @@ export function loadState(): MChanStateV1 {
                   floorNo: Number.isFinite(f.floorNo) ? Number(f.floorNo) : 1,
                   content: typeof f.content === 'string' ? f.content : '',
                   createdAtMs: Number.isFinite(f.createdAtMs) ? Number(f.createdAtMs) : safeNowMs(),
-                  source: (f.source === 'ai' || f.source === 'user' || f.source === 'local') ? f.source : 'local',
+                  source: f.source === 'ai' || f.source === 'user' || f.source === 'local' ? f.source : 'local',
                   originKey: typeof f.originKey === 'string' ? f.originKey : undefined,
                   originFloorTagNo: Number.isFinite(f.originFloorTagNo) ? Number(f.originFloorTagNo) : undefined,
                 }))
@@ -208,10 +208,7 @@ export function parseTaggedBlocks(text: string): ParsedPostBlock[] {
   if (!normalized) return [];
 
   const boardsPattern = BOARD_NAMES.map(escapeRegexLiteral).join('|');
-  const outerRe = new RegExp(
-    `<(?<tag>(?:${boardsPattern})帖子\\d+)>(?<inner>[\\s\\S]*?)<\\/\\k<tag>>`,
-    'gu',
-  );
+  const outerRe = new RegExp(`<(?<tag>(?:${boardsPattern})帖子\\d+)>(?<inner>[\\s\\S]*?)<\\/\\k<tag>>`, 'gu');
 
   const blocks: ParsedPostBlock[] = [];
   for (const m of normalized.matchAll(outerRe)) {
@@ -269,7 +266,10 @@ export function applyParsedBlocks(
     if (!existed) createdPosts += 1;
 
     b.floors.forEach((f, fIdx) => {
-      const originKey = originMessageId !== undefined ? `msg:${originMessageId}:post:${b.board}:${b.postNo}:floor:${bIdx}:${fIdx}` : undefined;
+      const originKey =
+        originMessageId !== undefined
+          ? `msg:${originMessageId}:post:${b.board}:${b.postNo}:floor:${bIdx}:${fIdx}`
+          : undefined;
       if (originKey && post.floors.some(x => x.originKey === originKey)) {
         return;
       }
@@ -314,12 +314,16 @@ export function buildReplyPrompt(args: ReplyPromptArgs): string {
     `必须严格只输出以下 HTML 标签并用<匿名版></匿名版>包裹结构：`,
     `- 不要输出任何额外文字`,
     `- 不要输出 Markdown 代码块/反引号`,
+    `- 正文/楼层内容中避免出现 < 或 >（如必须使用请改用全角＜＞）`,
+    `以下是格式示例：`,
+    `<匿名版>`,
     `<${tag}>`,
     ...Array.from({ length: floorsToGenerate }, (_, i) => {
       const n = start + i;
       return `<楼层${n}>（在这里写楼层内容）</楼层${n}>`;
     }),
     `</${tag}>`,
+    `</匿名版>`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -337,7 +341,10 @@ function escapeForTagContent(text: string): string {
   return text.replace(/[<>]/g, m => (m === '<' ? '＜' : '＞'));
 }
 
-function buildTaggedContextBlock(post: PostContextForPrompt, opts?: { maxFloors?: number }): { block: string; truncated: boolean } {
+function buildTaggedContextBlock(
+  post: PostContextForPrompt,
+  opts?: { maxFloors?: number },
+): { block: string; truncated: boolean } {
   const maxFloors = Math.max(1, opts?.maxFloors ?? 30);
   const floors = post.floors;
   const truncated = floors.length > maxFloors;
@@ -376,20 +383,25 @@ export function buildAiFollowupPrompt(args: FollowupPromptArgs): string {
     `你要生成 ${aiFloorsToGenerate} 个新楼层（楼层号从 ${start} 到 ${end}）。`,
     styleHint ? `额外要求：${styleHint}` : '',
     `引用（帖子标题/正文/已有楼层，作为上文与格式示例）：`,
+    `<匿名版>`,
     truncated ? `（上文已截断：仅包含最近30楼）` : '',
     block,
+    `</匿名版>`,
     `输出要求：`,
-    `- 必须严格只输出以下 HTML 标签并用<匿名版></匿名版>包裹结构`,
+    `- 必须严格只输出以下 HTML 标签并用<匿名版></匿名版>包裹结构：`,
     `- 不要输出任何额外文字/解释`,
     `- 不要输出 Markdown 代码块/反引号`,
     `- 楼层内容中避免出现 < 或 >（如必须使用请改用全角＜＞）`,
     `- 回复要像真实匿名版：可以短句、口语、偶尔用 >>No.楼层号 引用`,
+    `以下是格式示例：`,
+    `<匿名版>`,
     `<${tag}>`,
     ...Array.from({ length: aiFloorsToGenerate }, (_, i) => {
       const n = start + i;
       return `<楼层${n}>（以匿名用户口吻写内容）</楼层${n}>`;
     }),
     `</${tag}>`,
+    `</匿名版>`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -412,11 +424,14 @@ export function buildNewPostPrompt(args: NewPostPromptArgs): string {
     `- 不要输出任何额外文字`,
     `- 不要输出 Markdown 代码块/反引号`,
     `- 正文/楼层内容中避免出现 < 或 >（如必须使用请改用全角＜＞）`,
+    `以下是格式示例：`,
+    `<匿名版>`,
     `<${tag}>`,
     `<标题>（在这里写标题）</标题>`,
     `<正文>（在这里写正文）</正文>`,
     `<楼层1>（在这里写首楼内容）</楼层1>`,
     `</${tag}>`,
+    `</匿名版>`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -445,7 +460,10 @@ export async function sendPromptToTavern(prompt: string): Promise<void> {
   await triggerSlash('/trigger');
 }
 
-export type Preset = Record<BoardName, Array<Omit<Post, 'floors' | 'createdAtMs' | 'updatedAtMs'> & { floors?: string[] }>>;
+export type Preset = Record<
+  BoardName,
+  Array<Omit<Post, 'floors' | 'createdAtMs' | 'updatedAtMs'> & { floors?: string[] }>
+>;
 
 export const DEFAULT_PRESET: Preset = {
   公告区: [

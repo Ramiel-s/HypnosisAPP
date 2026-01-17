@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StatusBar } from './components/OS/StatusBar';
 import { HypnosisApp, HypnoLogoSVG } from './components/HypnosisApp';
 import { AchievementApp } from './components/AchievementApp'; // Import new component
-import { BodyStatsApp, CalendarApp, HelpApp, WipApp } from './components/CommonApps';
+import { BodyStatsApp, CalendarApp, HelpApp, InventoryApp, WipApp } from './components/CommonApps';
 import { DataService } from './services/dataService';
 import { waitForMvuReady } from './services/mvuBridge';
 import { UserResources, AppMode } from './types';
-import { Activity, Calendar, HelpCircle, Trophy, Globe } from 'lucide-react';
+import { Activity, Calendar, HelpCircle, Trophy, Globe, Package } from 'lucide-react';
 
 const FALLBACK_USER_DATA: UserResources = {
   mcEnergy: 25,
@@ -191,6 +191,8 @@ const App = () => {
         return <CalendarApp onBack={() => setCurrentApp(AppMode.HOME)} />;
       case AppMode.HELP:
         return <HelpApp onBack={() => setCurrentApp(AppMode.HOME)} />;
+      case AppMode.INVENTORY:
+        return <InventoryApp onBack={() => setCurrentApp(AppMode.HOME)} />;
       case AppMode.ACHIEVEMENTS: // New Route
         return (
           <AchievementApp userData={userData} onUpdateUser={updateUser} onBack={() => setCurrentApp(AppMode.HOME)} />
@@ -322,6 +324,14 @@ const HomeScreen = ({
       icon: Trophy,
       color: 'bg-gradient-to-br from-indigo-500 to-purple-600',
       mode: AppMode.ACHIEVEMENTS,
+      disabled: false,
+    },
+    {
+      id: 'inventory',
+      name: '库存',
+      icon: Package,
+      color: 'bg-emerald-600',
+      mode: AppMode.INVENTORY,
       disabled: false,
     },
     {

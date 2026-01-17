@@ -10,6 +10,7 @@ import {
   ChevronUp,
   Construction,
   Lock,
+  Package,
   Search,
   User,
 } from 'lucide-react';
@@ -983,6 +984,148 @@ const CalendarDarkApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 export const HelpApp = ({ onBack }: { onBack: () => void }) => <HelpAppInner onBack={onBack} />;
+
+type InventoryEntry = {
+  name: string;
+  detail?: string;
+  quantity?: string;
+  description?: string;
+};
+
+function normalizeInventory(value: unknown): InventoryEntry[] {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.map(item => ({ name: String(item) }));
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, any>;
+    return Object.keys(record)
+      .map(key => {
+        const v = record[key];
+        if (v === null || v === undefined) return { name: key };
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+          return { name: key, detail: String(v) };
+        }
+        if (Array.isArray(v)) {
+          return { name: key, detail: v.map(item => String(item)).join(', ') };
+        }
+        if (typeof v === 'object') {
+          const quantity = (v as Record<string, any>).数量;
+          const description = (v as Record<string, any>).描述;
+          const normalizedQuantity =
+            typeof quantity === 'number' || typeof quantity === 'string' ? String(quantity).trim() : '';
+          const normalizedDescription = typeof description === 'string' ? description.trim() : '';
+          if (normalizedQuantity || normalizedDescription) {
+            return {
+              name: key,
+              quantity: normalizedQuantity || undefined,
+              description: normalizedDescription || undefined,
+            };
+          }
+        }
+        try {
+          return { name: key, detail: JSON.stringify(v) };
+        } catch {
+          return { name: key, detail: String(v) };
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  }
+  return [{ name: String(value) }];
+}
+
+export const InventoryApp: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [entries, setEntries] = useState<InventoryEntry[]>([]);
+
+  const loadInventory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const system = await MvuBridge.getSystem();
+      if (!system) {
+        setEntries([]);
+        setError('未连接到酒馆变量（MVU 未初始化或不在酒馆环境中）');
+        return;
+      }
+      setEntries(normalizeInventory((system as any).持有物品));
+    } catch (err) {
+      console.warn('[HypnoOS] 读取库存失败', err);
+      setEntries([]);
+      setError('读取失败：请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadInventory();
+  }, []);
+
+  useEffect(() => {
+    let stops: Array<{ stop: () => void }> = [];
+    void (async () => {
+      try {
+        const ready = await waitForMvuReady({ timeoutMs: 5000, pollMs: 150 });
+        if (!ready) return;
+        stops = [
+          eventOn(Mvu.events.VARIABLE_INITIALIZED, () => void loadInventory()),
+          eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => void loadInventory()),
+        ];
+      } catch {
+        // ignore
+      }
+    })();
+    return () => stops.forEach(s => s.stop());
+  }, []);
+
+  return (
+    <PageLayout title="库存" onBack={onBack} color="bg-gray-100">
+      {error && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <div className="space-y-2">
+          <div className="h-10 rounded-xl bg-white animate-pulse" />
+          <div className="h-10 rounded-xl bg-white animate-pulse" />
+          <div className="h-10 rounded-xl bg-white animate-pulse" />
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="h-40 rounded-2xl bg-white flex flex-col items-center justify-center text-gray-400 text-sm">
+          <Package className="mb-2" />
+          暂无持有物品
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {entries.map(entry => (
+            <div
+              key={`${entry.name}-${entry.quantity ?? ''}-${entry.description ?? ''}-${entry.detail ?? ''}`}
+              className="rounded-xl bg-white px-4 py-3 shadow-sm flex flex-col gap-1"
+            >
+              <div className="text-sm font-semibold text-gray-800 truncate">{entry.name}</div>
+              {(entry.quantity || entry.description || entry.detail) && (
+                <div className="text-xs text-gray-500">
+                  {entry.detail ? (
+                    entry.detail
+                  ) : (
+                    <>
+                      {entry.quantity && <span>数量: {entry.quantity}</span>}
+                      {entry.quantity && entry.description && <span className="mx-2">·</span>}
+                      {entry.description && <span>描述: {entry.description}</span>}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </PageLayout>
+  );
+};
 
 type HelpTopic = {
   id: string;

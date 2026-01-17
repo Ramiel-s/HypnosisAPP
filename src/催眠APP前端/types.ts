@@ -5,6 +5,7 @@ export enum AppMode {
   BODY_STATS = 'BODY_STATS',
   CALENDAR = 'CALENDAR',
   HELP = 'HELP',
+  INVENTORY = 'INVENTORY',
   ACHIEVEMENTS = 'ACHIEVEMENTS', // Replaces Ghost/WIP
   WIP = 'WIP',
 }
