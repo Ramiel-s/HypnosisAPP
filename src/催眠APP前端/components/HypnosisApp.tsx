@@ -488,7 +488,9 @@ export const HypnosisApp: React.FC<HypnosisAppProps> = ({ userData, onUpdateUser
         setSubscription(nextSub as any);
         if (auto.renewed && nextSub?.tier) {
           const price = SUBSCRIPTION_PRICES[nextSub.tier] ?? 0;
-          void MvuBridge.appendThisTurnAppOperationLog(`自动续订 VIP${nextSub.tier.slice(3)}（-¥${price.toLocaleString()}）`);
+          void MvuBridge.appendThisTurnAppOperationLog(
+            `自动续订 VIP${nextSub.tier.slice(3)}（-¥${price.toLocaleString()}）`,
+          );
         }
       } catch (err) {
         console.warn('[HypnoOS] 订阅/时间同步失败', err);
